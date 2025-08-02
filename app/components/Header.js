@@ -229,7 +229,6 @@ export default function Header({transparent = false}) {
         searchSource: 'header',
         deviceType: isDesktop ? 'desktop' : 'mobile',
       });
-
       // Also log search to Netlify function for better search analytics
       fetch('/.netlify/functions/logSearch', {
         method: 'POST',

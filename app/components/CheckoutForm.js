@@ -48,25 +48,7 @@ const MultiPaymentExpressCheckoutComponent = ({clientSecret}) => {
         payment_method: paymentMethod
       }
     });
-    
-    // Also log to Netlify function for better analytics
-    fetch('/.netlify/functions/logSearch', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: `express_checkout_${paymentMethod}`,
-        source: 'express_checkout',
-        user_id: null, // Will use guest session ID in the function
-        is_gift_search: false
-      })
-    }).catch(error => {
-      console.error('Error logging express checkout click:', error);
-      // Non-blocking - we don't want to interrupt the user experience
-    });
   };
-
   const handleConfirmPayment = async event => {
     if (!stripe || !elements || !clientSecret) {
       Alert.alert('Error', 'Stripe not initialized or client secret missing.');
