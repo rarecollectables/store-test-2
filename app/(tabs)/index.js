@@ -423,7 +423,7 @@ const [selectedCategory, setSelectedCategory] = useState('Best Sellers');
               description="Celebrate love, anniversaries, and life's milestones with timeless heart pendants — the perfect gift for her. Made with conflict-free, sustainable lab-grown diamonds and 925 sterling silver, our pieces offer meaningful sparkle without compromise. Ideal for birthdays, Valentine's Day, or simply saying 'I love you.'"
               // stepStart="01"
               // stepEnd="05"
-              imageUri="https://fhybeyomiivepmlrampr.supabase.co/storage/v1/object/public/products/Necklaces/20-champagnebox-Necklace-5.avif"
+              imageUri="https://fhybeyomiivepmlrampr.supabase.co/storage/v1/object/public/products/Necklaces/18-2-Necklace.jpg"
               onAddToCart={() => {
                 router.push('/shop?tag=heart-pendant');
                 // or your addToCart() logic

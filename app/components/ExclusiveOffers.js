@@ -12,17 +12,17 @@ import {borderRadius, colors, fontFamily, shadows, spacing} from '../../theme';
 const offers = [
   {
     id: 1,
-    title: 'DAZZLING GOLD\nBRACELET COLLECTION',
+    title: 'DAZZLING SILVER\nB JEWELLERY SET',
     subtitle: 'Grace your wrist with timeless elegance.',
     image:
-      'https://fhybeyomiivepmlrampr.supabase.co/storage/v1/object/public/products/Bracelets/14-bracelets-1.avif',
+      'https://fhybeyomiivepmlrampr.supabase.co/storage/v1/object/public/products/Three-Pcs-Jewellery-Set/2-three-piece-jewellery-set-3.avif',
   },
   {
     id: 2,
-    title: 'ELEGANT PINK\nNECKLACE EXCLUSIVE',
+    title: 'ELEGANT WHITE\nNECKLACE EXCLUSIVE',
     subtitle: 'Celebrate every moment in radiant style.',
     image:
-      'https://fhybeyomiivepmlrampr.supabase.co/storage/v1/object/public/products/Necklaces/24-ElegantPink-Necklace-1.webp',
+      'https://fhybeyomiivepmlrampr.supabase.co/storage/v1/object/public/products/Necklaces/17-1-Necklace.webp',
   },
 ];
 
