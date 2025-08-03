@@ -44,11 +44,6 @@ exports.handler = async function(event, context) {
     
     console.log('Processing search log:', { query, source, ip_address: !!ip_address });
     
-    // Track if this is a gift-related search for SEO analysis
-    const isGiftSearch = query.toLowerCase().includes('gift') || 
-                         query.toLowerCase().includes('present') || 
-                         query.toLowerCase().includes('for her');
-
     if (!query || typeof query !== 'string' || query.trim() === '') {
       return {
         statusCode: 400,
@@ -62,9 +57,7 @@ exports.handler = async function(event, context) {
         user_id: user_id || null,
         ip_address,
         user_agent,
-        source,
-        is_gift_search: isGiftSearch,
-        search_category: isGiftSearch ? 'gift' : 'general'
+        source
       }
     ]).select();
 
