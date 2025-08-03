@@ -44,16 +44,16 @@ const CATEGORIES = [
     path: '/(tabs)/shop?category=TopDeals',
     icon: 'tags',
     subcategories: [
-      { name: 'Summer Steals Up to 40% Off Storewide', path: '/(tabs)/shop?category=TopDeals&subcategory=SummerSteals40' },
-      { name: 'Summer Steals Up to 50% Off Select Styles', path: '/(tabs)/shop?category=TopDeals&subcategory=SummerSteals50' },
-      { name: '20% off select Clearance', path: '/(tabs)/shop?category=TopDeals&subcategory=Clearance20' },
-      { name: '40% Off SOKO', path: '/(tabs)/shop?category=TopDeals&subcategory=SOKO40' },
+      { name: 'Summer Steals Up to 40% Off Storewide', path: '/(tabs)/shop?tag=40-off' },
+      { name: 'Summer Steals Up to 50% Off Select Styles', path: '/(tabs)/shop?tag=50-off' },
+      { name: '20% off select Clearance', path: '/(tabs)/shop?tag=20-off' },
+      { name: '40% Off SOKO', path: '/(tabs)/shop?tag=40-off' },
       { name: 'Summer Faves Under $250', path: '/(tabs)/shop?category=TopDeals&subcategory=SummerFaves250' },
       { name: 'Zales Essentials: Rings Designed and Priced For You', path: '/(tabs)/shop?category=TopDeals&subcategory=ZalesEssentials' },
       { name: 'Ear Party Under $250', path: '/(tabs)/shop?category=TopDeals&subcategory=EarParty250' },
       { name: 'Styles For Him Under $500', path: '/(tabs)/shop?category=TopDeals&subcategory=MensUnder500' },
       { name: 'Clearance 50% Off & Up', path: '/(tabs)/shop?category=TopDeals&subcategory=Clearance50' },
-      { name: 'View All Offers', path: '/(tabs)/shop?category=TopDeals' },
+      { name: 'View All Offers', path: '/(tabs)/shop' },
     ]
   },
   // {

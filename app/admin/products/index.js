@@ -10,7 +10,7 @@ export default function AdminProducts() {
   const [error, setError] = useState(null);
   const [showDialog, setShowDialog] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [form, setForm] = useState({ name: '', price: '', image_url: '', additional_images: '', category: '', shipping_label: '', description: '', stock: '', material: '', stone: '', size: '', length: '', video_url: '' });
+  const [form, setForm] = useState({ name: '', price: '', image_url: '', additional_images: '', category: '', shipping_label: '', description: '', stock: '', material: '', stone: '', size: '', length: '', video_url: '', tags: '' });
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searchTimeout, setSearchTimeout] = useState(null);
@@ -41,7 +41,7 @@ export default function AdminProducts() {
     setError(null);
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, price, image_url, additional_images, category, shipping_label, description, stock, material, stone, size, length, video_url')
+      .select('id, name, price, image_url, additional_images, category, shipping_label, description, stock, material, stone, size, length, video_url, tags')
       .order('created_at', { ascending: false });
     if (error) {
       setError('Failed to fetch products');
@@ -63,19 +63,20 @@ export default function AdminProducts() {
       size: product.size || '',
       length: product.length || '',
       shipping_label: product.shipping_label || '',
-      video_url: product.video_url || ''
-    } : { name: '', price: '', image_url: '', additional_images: '', category: '', shipping_label: '', description: '', stock: '', material: '', stone: '', size: '', length: '', video_url: '' });
+      video_url: product.video_url || '',
+      tags: Array.isArray(product.tags) ? product.tags.join(', ') : (product.tags || '')
+    } : { name: '', price: '', image_url: '', additional_images: '', category: '', shipping_label: '', description: '', stock: '', material: '', stone: '', size: '', length: '', video_url: '', tags: '' });
     setShowDialog(true);
   }
 
   function closeDialog() {
     setShowDialog(false);
     setEditingProduct(null);
-    setForm({ name: '', price: '', image_url: '', additional_images: '', category: '', shipping_label: '', description: '', stock: '', material: '', stone: '', size: '', length: '', video_url: '' });
+    setForm({ name: '', price: '', image_url: '', additional_images: '', category: '', shipping_label: '', description: '', stock: '', material: '', stone: '', size: '', length: '', video_url: '', tags: '' });
   }
 
   async function handleSave() {
-    const { name, price, image_url, additional_images, category, shipping_label, description, stock, material, stone, size, length, video_url } = form;
+    const { name, price, image_url, additional_images, category, shipping_label, description, stock, material, stone, size, length, video_url, tags } = form;
     if (!name || !price) return Alert.alert('Validation', 'Name and price are required');
     setLoading(true);
     let result;
@@ -91,6 +92,7 @@ export default function AdminProducts() {
       additional_images: additional_images ? additional_images.split(',').map(s => s.trim()).filter(Boolean) : [],
       material: material?.trim() || null,
       stone: stone?.trim() || null,
+      tags: tags ? tags.split(',').map(s => s.trim()).filter(Boolean) : [],
       size: size?.trim() || null,
       length: length?.trim() || null,
       video_url: video_url?.trim() || null
@@ -250,6 +252,12 @@ export default function AdminProducts() {
               value={form.stock}
               onChangeText={text => setForm(f => ({ ...f, stock: text }))}
               keyboardType="number-pad"
+              style={styles.input}
+            />
+            <TextInput
+              label="Tags (comma separated, e.g. gift for her, 20-off)"
+              value={form.tags}
+              onChangeText={text => setForm(f => ({ ...f, tags: text }))}
               style={styles.input}
             />
             </ScrollView>
