@@ -42,7 +42,7 @@ exports.handler = async function(event, context) {
     const ip_address = event.headers['x-forwarded-for'] || event.headers['client-ip'] || null;
     const user_agent = event.headers['user-agent'] || null;
     
-    console.log('Processing search log:', { query, source, ip_address: !!ip_address });
+    console.log('Processing search log:', { query, ip_address: !!ip_address });
     
     if (!query || typeof query !== 'string' || query.trim() === '') {
       return {
@@ -56,8 +56,7 @@ exports.handler = async function(event, context) {
         query,
         user_id: user_id || null,
         ip_address,
-        user_agent,
-        source
+        user_agent
       }
     ]).select();
 
