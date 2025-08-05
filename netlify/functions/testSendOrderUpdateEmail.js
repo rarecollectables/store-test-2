@@ -4,6 +4,23 @@ const sendOrderUpdateEmail = require('./sendOrderUpdateEmail');
 const { createClient } = require('@supabase/supabase-js');
 const config = require('../../config/supabaseConfig');
 
+// Check for Gmail credentials
+if (!process.env.GMAIL_USER) {
+  console.log('GMAIL_USER not set. Please run with: GMAIL_USER=your-email@gmail.com GMAIL_PASS=your-app-password node netlify/functions/testSendOrderUpdateEmail.js');
+  process.exit(1);
+}
+
+if (!process.env.GMAIL_PASS) {
+  console.log('GMAIL_PASS not set. Please run with: GMAIL_USER=your-email@gmail.com GMAIL_PASS=your-app-password node netlify/functions/testSendOrderUpdateEmail.js');
+  process.exit(1);
+}
+
+console.log('Using Gmail SMTP configuration:', {
+  service: 'gmail',
+  user: process.env.GMAIL_USER,
+  passExists: !!process.env.GMAIL_PASS
+});
+
 (async () => {
   // Example product IDs for the order update
   const productIds = ['20075497-1112-400f-8238-565f62cbd724'];
@@ -53,7 +70,7 @@ const config = require('../../config/supabaseConfig');
 
   try {
     await sendOrderUpdateEmail({
-      to: 'harrison.robert49@outlook.com', // <-- Change for testing
+      to: 'rarecollectablessales@gmail.com', // <-- Change for testing
       order: {
         customerName: 'Robert Harrison',
         id: 'ORDER431',

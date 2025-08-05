@@ -1,8 +1,25 @@
 // netlify/functions/inbox-friendly-order-email.js
-// A more inbox-friendly version of the order emails
-const sgMail = require('@sendgrid/mail');
+// A more inbox-friendly version of the order emails using Gmail SMTP
+require('dotenv').config({ path: '../../.env' });
+const nodemailer = require('nodemailer');
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+// Create a reusable transporter object using Gmail SMTP
+const createTransporter = () => {
+  // Check for required Gmail credentials
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS) {
+    throw new Error('Gmail credentials missing. Please set GMAIL_USER and GMAIL_PASS environment variables.');
+  }
+  
+  return nodemailer.createTransport({
+    service: 'Gmail',
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_PASS
+    },
+    debug: true, // Enable debug output
+    logger: true // Log information to the console
+  });
+};
 
 exports.handler = async function(event) {
   // Get the to_email from query or environment for manual test
@@ -18,6 +35,7 @@ exports.handler = async function(event) {
   const orderNumber = (event.queryStringParameters && event.queryStringParameters.order_number) || 'ORDER-' + Math.floor(Math.random() * 10000);
   const customerName = (event.queryStringParameters && event.queryStringParameters.customer_name) || 'Customer';
   const trackingCode = (event.queryStringParameters && event.queryStringParameters.tracking_code) || 'TRACK-' + Math.floor(Math.random() * 10000);
+  const customMessage = (event.queryStringParameters && event.queryStringParameters.custom_message) || '';
   
   // Prepare email content based on type
   let subject, htmlContent, textContent;
@@ -129,17 +147,29 @@ Sarah
 Rare Collectables`;
   }
 
-  // Send the email using the same configuration that worked for cart emails
-  await sgMail.send({
+  // Add custom message if provided
+  if (customMessage) {
+    const customMessageHtml = `<p>${customMessage}</p>`;
+    const customMessageText = `\n\n${customMessage}`;
+    
+    // Add custom message before the signature
+    htmlContent = htmlContent.replace('<p>Best regards,<br>', `${customMessageHtml}\n\n<p>Best regards,<br>`);
+    textContent = textContent.replace('\n\nBest regards,', `${customMessageText}\n\nBest regards,`);
+  }
+
+  // Create transporter for Gmail SMTP
+  const transporter = createTransporter();
+  
+  // Send the email using Gmail SMTP
+  const result = await transporter.sendMail({
     to: to_email,
-    from: {
-      email: 'carecentre@rarecollectables.co.uk',
-      name: 'Sarah Wilson'
-    },
+    from: `"Sarah Wilson" <${process.env.GMAIL_USER}>`,
     subject: subject,
     text: textContent,
     html: htmlContent
   });
+  
+  console.log('Email sent via Gmail SMTP:', result);
 
   return { 
     statusCode: 200, 

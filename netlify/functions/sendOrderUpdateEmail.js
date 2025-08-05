@@ -1,7 +1,7 @@
-const sgMail = require('@sendgrid/mail');
 const fs = require('fs');
 const path = require('path');
 const handlebars = require('handlebars');
+const nodemailer = require('nodemailer');
 
 // DEBUG: Log contents of function directory
 try {
@@ -10,8 +10,47 @@ try {
   console.log('Could not read function directory:', e.message);
 }
 
+// Gmail configuration
+const GMAIL_USER = process.env.GMAIL_USER;
+const GMAIL_PASS = process.env.GMAIL_PASS;
+const EMAIL_FROM = process.env.EMAIL_FROM || GMAIL_USER;
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+// Check if Gmail configuration is available
+if (!GMAIL_USER) {
+  console.error('Missing Gmail username. Please set GMAIL_USER environment variable.');
+}
+
+if (!GMAIL_PASS) {
+  console.error('Missing Gmail password. Please set GMAIL_PASS environment variable.');
+}
+
+// Create a transporter object using Gmail SMTP
+console.log('Using Gmail SMTP service');
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: GMAIL_USER,
+    pass: GMAIL_PASS
+  },
+  debug: true,
+  logger: true // Log to console
+});
+
+// Verify SMTP connection configuration
+transporter.verify(function(error, success) {
+  if (error) {
+    console.error('SMTP connection verification failed:', error);
+  } else {
+    console.log('SMTP server is ready to take our messages');
+  }
+});
+
+// Debug email configuration (don't log full password in production)
+console.log('Email configuration:', {
+  service: 'gmail',
+  user: GMAIL_USER,
+  passExists: !!GMAIL_PASS
+});
 
 // Load and compile the email template once
 const templateSource = fs.readFileSync(path.join(__dirname, 'order-update-email.hbs'), 'utf8');
@@ -53,19 +92,52 @@ async function sendOrderUpdateEmail({ to, order, trackingCode, trackingUrl, rela
   // Optionally: generate a plain-text version
   const text = `Hi ${orderData.customerName},\n\nYour order #${orderData.orderNumber} is on its way!\nTracking code: ${orderData.trackingCode}\nTrack your order: ${orderData.trackingUrl}\n\nThank you for shopping with Rare Collectables!`;
 
-  const msg = {
-    to,
-    bcc: process.env.ORDER_BCC_EMAIL ? [process.env.ORDER_BCC_EMAIL] : undefined,
-    from: {
-      email: process.env.SENDGRID_FROM_EMAIL || 'no-reply@rarecollectables.com',
-      name: 'Rare Collectables'
-    },
-    replyTo: 'rarecollectablessales@gmail.com',
+  // Prepare email data for Mailgun
+  const fromEmail = process.env.MAILGUN_FROM_EMAIL || 'no-reply@rarecollectables.com';
+  const fromName = 'Rare Collectables';
+  const from = `${fromName} <${fromEmail}>`;
+  
+  const emailData = {
+    from: from,
+    to: to,
     subject: 'Your Order Update from Rare Collectables',
-    text,
-    html
+    text: text,
+    html: html,
+    'h:Reply-To': 'rarecollectablessales@gmail.com'
   };
-  return sgMail.send(msg);
+  
+  // Add BCC if configured
+  if (process.env.ORDER_BCC_EMAIL) {
+    emailData.bcc = process.env.ORDER_BCC_EMAIL;
+  }
+  
+  console.log(`Sending email to ${to} via Gmail SMTP`);
+  
+  // Prepare email data for Nodemailer
+  const mailOptions = {
+    from: `"${fromName}" <${fromEmail}>`,
+    to: to,
+    subject: 'Your Order Update from Rare Collectables',
+    text: text,
+    html: html,
+    replyTo: 'rarecollectablessales@gmail.com'
+  };
+  
+  // Add BCC if configured
+  if (process.env.ORDER_BCC_EMAIL) {
+    mailOptions.bcc = process.env.ORDER_BCC_EMAIL;
+  }
+  
+  // Send email using Nodemailer
+  return transporter.sendMail(mailOptions)
+    .then(result => {
+      console.log('Email sent successfully via SMTP:', result);
+      return result;
+    })
+    .catch(error => {
+      console.error('Error sending email via SMTP:', error);
+      throw error;
+    });
 }
 
 module.exports = sendOrderUpdateEmail;

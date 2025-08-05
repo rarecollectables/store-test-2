@@ -1,7 +1,25 @@
 // Netlify function to handle sending admin-triggered emails
 require('dotenv').config({ path: '../../.env' });
 const sendOrderUpdateEmail = require('./sendOrderUpdateEmail');
-const sgMail = require('@sendgrid/mail');
+const nodemailer = require('nodemailer');
+
+// Create a reusable transporter object using Gmail SMTP
+const createTransporter = () => {
+  // Check for required Gmail credentials
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS) {
+    throw new Error('Gmail credentials missing. Please set GMAIL_USER and GMAIL_PASS environment variables.');
+  }
+  
+  return nodemailer.createTransport({
+    service: 'Gmail',
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_PASS
+    },
+    debug: true, // Enable debug output
+    logger: true // Log information to the console
+  });
+};
 
 // Import the inbox-friendly email handler
 const { handler: inboxFriendlyEmailHandler } = require('./inbox-friendly-order-email');
@@ -18,17 +36,25 @@ const TEMPLATES = {
   },
   'enquiry-reply': {
     subject: 'Reply to Your Enquiry from Rare Collectables',
-    handler: async ({ to, subject, data }) => {
-      // Simple direct SendGrid send for enquiry replies
-      return sgMail.send({
+    handler: async ({ to, subject, data, customMessage }) => {
+      // Create a transporter using Gmail SMTP
+      const transporter = createTransporter();
+      
+      // Prepare the message content
+      const messageText = data.text || data.message || 'Thank you for contacting us.';
+      const messageHtml = data.html || `<p>${data.message || 'Thank you for contacting us.'}</p>`;
+      
+      // Add custom message if provided
+      const finalText = customMessage ? `${messageText}\n\n${customMessage}` : messageText;
+      const finalHtml = customMessage ? `${messageHtml}<p>${customMessage}</p>` : messageHtml;
+      
+      // Send email using Nodemailer
+      return transporter.sendMail({
+        from: `"Rare Collectables" <${process.env.GMAIL_USER}>`,
         to,
-        from: {
-          email: process.env.SENDGRID_FROM_EMAIL || 'no-reply@rarecollectables.com',
-          name: 'Rare Collectables'
-        },
         subject: subject || 'Reply to Your Enquiry',
-        html: data.html || data.message || 'Thank you for contacting us.',
-        text: data.text || data.message || 'Thank you for contacting us.'
+        text: finalText,
+        html: finalHtml
       });
     }
   },
@@ -119,26 +145,33 @@ exports.handler = async function(event) {
       });
       log('Order email send result:', sendResult);
     } else if (template === 'enquiry-reply') {
-      sendResult = await handler({ to, subject: emailSubject, data });
+      sendResult = await handler({ 
+        to, 
+        subject: emailSubject, 
+        data,
+        customMessage: data.customMessage || ''
+      });
       log('Enquiry email send result:', sendResult);
     } else if (template.startsWith('inbox-friendly-')) {
       try {
+        // Create a custom event with all the data we need
         const mockEvent = {
           queryStringParameters: {
             to_email: to,
             type: template.replace('inbox-friendly-', ''),
             order_number: data.id || data.orderNumber || 'ORDER-' + Math.floor(Math.random() * 10000),
             customer_name: data.customerName || data.name || 'Customer',
-            tracking_code: data.trackingCode || ''
+            tracking_code: data.trackingCode || '',
+            custom_message: data.customMessage || ''
           }
         };
         
         // Call the inbox-friendly handler directly
-        await inboxFriendlyEmailHandler(mockEvent);
+        const result = await inboxFriendlyEmailHandler(mockEvent);
         log('Inbox-friendly email sent successfully to:', to);
         
-        // Just indicate success
-        sendResult = { success: true, message: `Email sent to ${to}` };
+        // Return the actual result
+        sendResult = result;
       } catch (inboxError) {
         log('Error sending inbox-friendly email:', inboxError);
         throw new Error(`Failed to send inbox-friendly email: ${inboxError.message}`);
