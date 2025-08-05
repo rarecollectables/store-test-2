@@ -1,5 +1,4 @@
-const { createRequire } = require('module');
-const require = createRequire(import.meta.url);
+// Using pure CommonJS format
 
 exports.handler = async (event) => {
   try {
