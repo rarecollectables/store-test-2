@@ -58,6 +58,24 @@ if (!STRIPE_PUBLISHABLE_KEY) {
   );
 }
 
+// Initialize Stripe with additional configuration to prevent cross-origin errors
+const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY, {
+  stripeAccount: undefined, // Use undefined for your own account
+  apiVersion: '2023-10-16', // Use the latest API version
+  locale: 'en', // Set the locale
+});
+
+// Helper function to calculate discounted price for an item
+// This was missing and causing the ReferenceError
+const calculateDiscountedPrice = (item) => {
+  // If the item has a sale_price and it's less than the regular price, use it
+  if (item.sale_price && parseFloat(item.sale_price) < parseFloat(item.price)) {
+    return parseFloat(item.sale_price);
+  }
+  // Otherwise use the regular price
+  return parseFloat(item.price);
+};
+
 // const NETLIFY_STRIPE_FUNCTION_URL =
 //   'http://localhost:4242/create-checkout-session';
 const isProd = process.env.NODE_ENV === 'development';
