@@ -16,13 +16,16 @@ const TagBanner = ({ tag }) => {
 
   // Map tags to specific banner images and taglines
   const getBannerDetails = (tag) => {
+    // Use a single existing banner image for all tags for now
+    const bannerImage = require('../../assets/images/banners/celebrate love.webp');
+    
     const tagMap = {
       'heart-pendant': {
-        image: require('../../assets/images/banners/celebrate love.webp'),
+        image: bannerImage,
         tagline: 'Express your love with our exquisite heart pendants',
       },
       'silver-earrings': {
-        image: require('../../assets/images/banners/celebrate love.webp'),
+        image: bannerImage,
         tagline: 'Elegant silver earrings for every occasion',
       },
       // Add more tag mappings as needed
@@ -30,7 +33,7 @@ const TagBanner = ({ tag }) => {
     
     // Return the mapped details or fallback
     return tagMap[tag] || {
-      image: require('../../assets/images/banners/celebrate love.webp'),
+      image: bannerImage,
       tagline: `Discover our beautiful ${formatTagName(tag)} collection`,
     };
   };

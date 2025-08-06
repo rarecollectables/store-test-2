@@ -9,9 +9,22 @@ import {loadStripe} from '@stripe/stripe-js';
 import {View, Text, ActivityIndicator, Alert} from 'react-native';
 import {trackEvent} from '../../lib/trackEvent';
 
+// Load Stripe with additional configuration to allow cross-origin frame access
+// Use environment variable for the publishable key instead of hardcoding
+const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+
+if (!STRIPE_PUBLISHABLE_KEY) {
+  console.warn('Stripe publishable key is missing. Payment functionality may not work properly.');
+}
+
 const stripePromise = loadStripe(
-  'pk_test_51Roiy4DjIpxK1Qh9RBhJBmidYYPQCyjeKW1p3KLmsOKYkZafBrhtAqrGXqzwT0x3j5rkAhRsvrO5CuEQOgnaCbU100EM9qDB7r',
-); // Use your actual key
+  STRIPE_PUBLISHABLE_KEY,
+  {
+    stripeAccount: undefined, // Use undefined for your own account
+    apiVersion: '2023-10-16', // Use the latest API version
+    locale: 'en', // Set the locale
+  }
+);
 
 const CheckoutForm = ({clientSecret}) => {
   const options = {
