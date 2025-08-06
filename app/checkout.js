@@ -325,7 +325,54 @@ export default function CheckoutScreen() {
   }, []);
 
   // Called after successful payment
-  const handleCheckoutSuccess = email => {
+  const handleCheckoutSuccess = async (email, paymentIntentId = null) => {
+    // Track purchase conversion for Google Analytics
+    trackEvent({
+      eventType: 'purchase',
+      items: cart.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: calculateDiscountedPrice(item),
+        quantity: item.quantity,
+      })),
+      value: total,
+      currency: 'GBP',
+      transaction_id: paymentIntentId || `order-${Date.now()}`,
+      metadata: { payment_method: paymentIntentId ? 'card' : 'express_checkout' },
+    });
+    
+    // Store order in database
+    const orderData = {
+      email: email,
+      items: cart,
+      subtotal,
+      discount: discountAmount,
+      shipping: shippingCost,
+      total,
+      payment_method: paymentIntentId ? 'card' : 'express_checkout',
+      payment_id: paymentIntentId || `order-${Date.now()}`,
+      status: 'paid',
+    };
+    
+    try {
+      // Store order in database
+      await storeOrder(orderData);
+      
+      // Send order confirmation email
+      fetch('/.netlify/functions/send-order-confirmation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+          order: orderData,
+        }),
+      });
+    } catch (err) {
+      console.error('Error storing order or sending confirmation:', err);
+    }
+    
     setConfirmationOpen(true);
     setTimeout(() => {
       router.push({
@@ -1028,18 +1075,28 @@ export default function CheckoutScreen() {
         
 
         pr.on('paymentmethod', async event => {
-          const {error} = await stripe.confirmCardPayment(clientSecret, {
-            payment_method: event.paymentMethod.id,
-            shipping: {
-              name: contact.name,
-              address: {
-                line1: address.line1,
-                city: address.city,
-                postal_code: address.postcode,
-                country: 'GB',
+          const {error, paymentIntent} = await stripe.confirmPayment({
+            elements,
+            confirmParams: {
+              return_url: `${window.location.origin}/checkout-success`,
+              receipt_email: contact.email,
+              payment_method_data: {
+                billing_details: {
+                  name: `${contact.firstName} ${contact.lastName}`,
+                  email: contact.email,
+                  phone: contact.phone,
+                  address: {
+                    city: address.city,
+                    country: 'GB',
+                    line1: address.line1,
+                    line2: address.line2,
+                    postal_code: address.postalCode,
+                    state: address.county,
+                  },
+                },
               },
             },
-            receipt_email: contact.email,
+            redirect: 'if_required',
           });
 
           if (error) {
@@ -1166,7 +1223,55 @@ export default function CheckoutScreen() {
           const {status} = result.paymentIntent;
           if (status === 'succeeded') {
             setMessage('Payment successful!');
-            // showAlert('Success', 'Payment successful!');
+            
+            // Track purchase conversion for Google Analytics
+            trackEvent({
+              eventType: 'purchase',
+              items: cart.map(item => ({
+                id: item.id,
+                name: item.name,
+                price: calculateDiscountedPrice(item),
+                quantity: item.quantity,
+              })),
+              value: total,
+              currency: 'GBP',
+              transaction_id: result.paymentIntent.id,
+              metadata: { payment_method: 'express_checkout' },
+            });
+            
+            // Store order in database
+            const orderData = {
+              email: contact.email,
+              items: cart,
+              subtotal,
+              discount: discountAmount,
+              shipping: shippingCost,
+              total,
+              payment_method: 'express_checkout',
+              payment_id: result.paymentIntent.id,
+              status: 'paid',
+            };
+            
+            try {
+              // Store order in database
+              await storeOrder(orderData);
+              
+              // Send order confirmation email
+              fetch('/.netlify/functions/send-order-confirmation', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  email: contact.email,
+                  order: orderData,
+                }),
+              });
+            } catch (err) {
+              console.error('Error storing order or sending confirmation:', err);
+            }
+            
+            // Navigate to success page
             router.push({
               pathname: '/checkout-success',
               params: {email: contact.email},
