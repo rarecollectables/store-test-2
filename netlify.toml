@@ -22,6 +22,9 @@ included_files = ["netlify/functions/order-update-email.hbs"]
   [functions.build]
     command = "yarn install && yarn run build"
 
+[[plugins]]
+  package = "@netlify/plugin-functions-install-core"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
