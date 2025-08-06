@@ -12,7 +12,7 @@ import {borderRadius, colors, fontFamily, shadows, spacing} from '../../theme';
 const offers = [
   {
     id: 1,
-    title: 'DAZZLING SILVER\nB JEWELLERY SET',
+    title: 'DAZZLING SILVER\nJEWELLERY SET',
     subtitle: 'Grace your wrist with timeless elegance.',
     image:
       'https://fhybeyomiivepmlrampr.supabase.co/storage/v1/object/public/products/Three-Pcs-Jewellery-Set/2-three-piece-jewellery-set-3.avif',

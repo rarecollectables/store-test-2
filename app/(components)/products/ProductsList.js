@@ -6,11 +6,11 @@ import { useRouter, useGlobalSearchParams } from 'expo-router';
 import { supabase } from '../../../lib/supabase/client';
 import ProductCard from './ProductCard';
 import { colors, spacing, borderRadius, fontFamily, shadows } from '../../../theme';
+import TagBanner from '../../../app/components/TagBanner';
+import TagRecommendations from '../../../app/components/TagRecommendations';
 
 const MOBILE_BREAKPOINT = 768;
 const TABLET_BREAKPOINT = 1024;
-
-
 
 import { TextInput, ScrollView } from 'react-native';
 
@@ -685,8 +685,14 @@ export default function ProductsList({ onAddToCartSuccess }) {
       );
     }
 
+    // Get the current tag from URL params (either 'tag' or 'tags' parameter)
+    const currentTag = tagParam || tagsParam;
+
     return (
       <View style={{ flex: 1 }}>
+        {/* Tag-specific Banner when a tag is present */}
+        {currentTag && <TagBanner tag={currentTag} />}
+        
         {/* Product Grid */}
         <FlatList
           data={products}

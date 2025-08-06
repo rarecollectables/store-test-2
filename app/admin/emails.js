@@ -67,6 +67,22 @@ export default function AdminEmailsPage() {
   });
   const [customMessage, setCustomMessage] = useState('');
   
+  // Preview state - separate from form state to ensure preview shows correct values
+  const [previewData, setPreviewData] = useState({
+    to: '',
+    customerName: '',
+    orderNumber: '',
+    trackingCode: '',
+    trackingUrl: '',
+    shippingAddress: {
+      name: '',
+      line1: '',
+      city: '',
+      postcode: ''
+    },
+    customMessage: ''
+  });
+  
   // Selected template details
   const [selectedTemplate, setSelectedTemplate] = useState(TEMPLATES[0]);
   
@@ -127,6 +143,48 @@ export default function AdminEmailsPage() {
   
   // Move to preview step
   const handleShowPreview = () => {
+    // Update preview data with current form values
+    setPreviewData({
+      to,
+      customerName,
+      orderNumber,
+      trackingCode,
+      trackingUrl,
+      shippingAddress,
+      customMessage,
+      orderData // Include the current JSON data
+    });
+    
+    // Force update of orderData before showing preview
+    if (isInboxFriendly) {
+      const data = {
+        customerName,
+        id: orderNumber,
+        trackingCode,
+        customMessage
+      };
+      setOrderData(JSON.stringify(data, null, 2));
+    } else if (template === 'order-update') {
+      // Format data for order update template
+      const data = {
+        to,
+        order: {
+          customerName,
+          id: orderNumber,
+          items: [
+            { name: 'Sample Item', quantity: 1, price: '19.99' }
+          ],
+          total: '19.99',
+          shipping_address: shippingAddress
+        },
+        trackingCode,
+        trackingUrl,
+        relatedProducts: []
+      };
+      setOrderData(JSON.stringify(data, null, 2));
+    }
+    
+    // Move to preview step
     setActiveStep(3);
   };
   
@@ -152,27 +210,18 @@ export default function AdminEmailsPage() {
     try {
       let data;
       
-      if (isInboxFriendly) {
-        // Use the dedicated fields for inbox-friendly emails
-        data = {
-          customerName,
-          id: orderNumber,
-          trackingCode,
-          customMessage
-        };
-      } else {
-        // Use the JSON textarea for other templates
-        try {
-          data = orderData ? JSON.parse(orderData) : {};
-        } catch (jsonError) {
-          setStatus({
-            type: 'error',
-            message: 'Invalid JSON data. Please check your format.'
-          });
-          setLoading(false);
-          return;
-        }
+      // Use the JSON data for all templates
+      try {
+        data = JSON.parse(orderData);
+      } catch (err) {
+        setStatus({
+          type: 'error',
+          message: 'Invalid JSON data: ' + err.message
+        });
+        setLoading(false);
+        return;
       }
+    
       
       // Add custom message to data if provided
       if (customMessage && !isInboxFriendly) {
@@ -501,13 +550,34 @@ export default function AdminEmailsPage() {
     );
   };
 
-  // Render the email preview and send step
-  const renderEmailPreview = () => {
-    // Ensure we can scroll to see all content
-    useEffect(() => {
+  // Effect to reset scroll position when showing preview
+  useEffect(() => {
+    if (activeStep === 3) {
       // Reset scroll position when showing preview
       window.scrollTo(0, 0);
-    }, []);
+    }
+  }, [activeStep]);
+
+  // Render the email preview and send step
+  const renderEmailPreview = () => {
+    // Parse JSON data if available to extract values for preview
+    let parsedData = {};
+    try {
+      if (previewData.orderData && typeof previewData.orderData === 'string' && previewData.orderData.trim()) {
+        parsedData = JSON.parse(previewData.orderData);
+      }
+    } catch (err) {
+      console.error('Error parsing JSON data:', err);
+    }
+    
+    // Extract values from parsed data or use form values as fallback
+    const displayData = {
+      customerName: parsedData.customerName || parsedData.order?.customerName || parsedData.order?.name || previewData.customerName || '',
+      orderNumber: parsedData.id || parsedData.order?.id || parsedData.orderNumber || previewData.orderNumber || '',
+      trackingCode: parsedData.trackingCode || previewData.trackingCode || '',
+      trackingUrl: parsedData.trackingUrl || previewData.trackingUrl || '',
+      shippingAddress: parsedData.shipping_address || parsedData.order?.shipping_address || previewData.shippingAddress || {}
+    };
     
     return (
       <div className="email-preview">
@@ -530,11 +600,11 @@ export default function AdminEmailsPage() {
             </div>
             <div className="preview-field">
               <span className="field-label">To:</span>
-              <span className="field-value">{to}</span>
+              <span className="field-value">{previewData.to}</span>
             </div>
             <div className="preview-field">
               <span className="field-label">Subject:</span>
-              <span className="field-value">{subject || selectedTemplate.label}</span>
+              <span className="field-value">Order Update for {displayData.customerName}</span>
             </div>
           </div>
 
@@ -545,45 +615,45 @@ export default function AdminEmailsPage() {
               
               {isInboxFriendly ? (
                 <div className="preview-data">
-                  <p><strong>Customer Name:</strong> {customerName}</p>
-                  <p><strong>Order Number:</strong> {orderNumber}</p>
-                  {trackingCode && <p><strong>Tracking Code:</strong> {trackingCode}</p>}
-                  {customMessage && (
+                  <p><strong>Customer Name:</strong> {displayData.customerName}</p>
+                  <p><strong>Order Number:</strong> {displayData.orderNumber}</p>
+                  {displayData.trackingCode && <p><strong>Tracking Code:</strong> {displayData.trackingCode}</p>}
+                  {previewData.customMessage && (
                     <div className="custom-message">
                       <h4>Custom Message:</h4>
-                      <p>{customMessage}</p>
+                      <p>{previewData.customMessage}</p>
                     </div>
                   )}
                 </div>
               ) : template === 'order-update' ? (
                 <div className="preview-data">
-                  <p><strong>Customer Name:</strong> {customerName}</p>
-                  <p><strong>Order Number:</strong> {orderNumber}</p>
-                  <p><strong>Tracking Code:</strong> {trackingCode}</p>
-                  <p><strong>Tracking URL:</strong> {trackingUrl}</p>
+                  <p><strong>Customer Name:</strong> {displayData.customerName}</p>
+                  <p><strong>Order Number:</strong> {displayData.orderNumber}</p>
+                  <p><strong>Tracking Code:</strong> {displayData.trackingCode}</p>
+                  <p><strong>Tracking URL:</strong> {displayData.trackingUrl}</p>
                   
                   <div className="shipping-address">
                     <h4>Shipping Address:</h4>
-                    <p>{shippingAddress.name}<br/>
-                    {shippingAddress.line1}<br/>
-                    {shippingAddress.city}{shippingAddress.postcode ? ', ' + shippingAddress.postcode : ''}</p>
+                    <p>{displayData.shippingAddress.name || ''}<br/>
+                    {displayData.shippingAddress.line1 || ''}<br/>
+                    {displayData.shippingAddress.city || ''}{displayData.shippingAddress.postcode ? ', ' + displayData.shippingAddress.postcode : ''}</p>
                   </div>
                   
-                  {customMessage && (
+                  {previewData.customMessage && (
                     <div className="custom-message">
                       <h4>Custom Message:</h4>
-                      <p>{customMessage}</p>
+                      <p>{previewData.customMessage}</p>
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="preview-data">
                   <h4>Order Data:</h4>
-                  <pre>{orderData}</pre>
-                  {customMessage && (
+                  <pre>{previewData.orderData}</pre>
+                  {previewData.customMessage && (
                     <div className="custom-message">
                       <h4>Custom Message:</h4>
-                      <p>{customMessage}</p>
+                      <p>{previewData.customMessage}</p>
                     </div>
                   )}
                 </div>
