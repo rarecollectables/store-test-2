@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Main Pages -->
+  <url>
+    <loc>https://rarecollectables.co.uk/</loc>
+    <priority>1.0</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/shop</loc>
+    <priority>0.9</priority>
+    <changefreq>daily</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/cart</loc>
+    <priority>0.7</priority>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/wishlist</loc>
+    <priority>0.7</priority>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/profile</loc>
+    <priority>0.6</priority>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/checkout</loc>
+    <priority>0.6</priority>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/chat</loc>
+    <priority>0.7</priority>
+    <changefreq>monthly</changefreq>
+  </url>
+  
+  <!-- Legal/Info Pages -->
+  <url>
+    <loc>https://rarecollectables.co.uk/privacy-policy</loc>
+    <priority>0.5</priority>
+    <changefreq>yearly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/terms-of-service</loc>
+    <priority>0.5</priority>
+    <changefreq>yearly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/return-policy</loc>
+    <priority>0.5</priority>
+    <changefreq>yearly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/contact</loc>
+    <priority>0.8</priority>
+    <changefreq>monthly</changefreq>
+  </url>
+  
+  <!-- Special Collection Pages -->
+  <url>
+    <loc>https://rarecollectables.co.uk/gifts-for-her</loc>
+    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  
+  <!-- Dynamic Category Pages -->
+  <url>
+    <loc>https://rarecollectables.co.uk/shop?category=rings</loc>
+    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/shop?category=necklaces</loc>
+    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/shop?category=earrings</loc>
+    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/shop?category=bracelets</loc>
+    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  
+  <!-- Dynamic Subcategory Pages -->
+  <url>
+    <loc>https://rarecollectables.co.uk/shop?category=GiftsForHer&subcategory=Birthday</loc>
+    <priority>0.7</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/shop?category=GiftsForHer&subcategory=Anniversary</loc>
+    <priority>0.7</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/shop?category=GiftsForHer&subcategory=Romantic</loc>
+    <priority>0.7</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/shop?category=GiftsForHer&subcategory=SpecialOccasion</loc>
+    <priority>0.7</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  
+  <!-- Dynamic Tag Pages -->
+  <url>
+    <loc>https://rarecollectables.co.uk/shop?tag=heart-pendant</loc>
+    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/shop?tag=silver-earrings</loc>
+    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/shop?tag=gold-plated</loc>
+    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/shop?tag=stainless-steel</loc>
+    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/shop?tag=tarnish-free</loc>
+    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/shop?tag=waterproof</loc>
+    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  
+  <!-- Multiple Tag Combinations -->
+  <url>
+    <loc>https://rarecollectables.co.uk/shop?tags=heart-pendant,gold-plated</loc>
+    <priority>0.7</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/shop?tags=silver-earrings,tarnish-free</loc>
+    <priority>0.7</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+</urlset>
