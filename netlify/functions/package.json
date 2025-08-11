@@ -4,11 +4,6 @@
   "description": "Netlify serverless functions for Rare Collectables store",
   "main": "index.js",
   "dependencies": {
-<<<<<<< HEAD
-    "@sendgrid/mail": "^7.7.0",
     "nodemailer": "^6.9.9"
-=======
-    "nodemailer": "^6.9.5"
->>>>>>> 2ad6a93982dfb4913dcb488bc347cea89368293d
   }
 }
