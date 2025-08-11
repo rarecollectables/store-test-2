@@ -1367,8 +1367,7 @@ export default function CheckoutScreen() {
                 } catch (backupTrackingError) {
                   console.error('Error in backup tracking attempt:', backupTrackingError);
                 }
-              }, 2000); // Longer delay for backup attempt
-            }, 500); // Small delay to ensure everything is loaded
+              }, 2000);  // Small delay to ensure everything is loaded
             
             // Store order in database with schema-compatible fields
             const orderData = {
@@ -1444,7 +1443,7 @@ export default function CheckoutScreen() {
               googlePay: 'never',
               link: 'never',
               amazonPay: 'never'
-            },
+            }
           }}
           onConfirm={handleConfirmPayment}
         />
