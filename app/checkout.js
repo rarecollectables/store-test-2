@@ -1225,56 +1225,149 @@ export default function CheckoutScreen() {
             setMessage('Payment successful!');
             
             // Track purchase conversion for Google Analytics
-            // Ensure Google Tag is loaded before sending the event
+            console.log('Preparing to track purchase event with data:', {
+              paymentIntentId: result.paymentIntent.id,
+              total,
+              cart,
+              email: contact.email
+            });
+            
+            // First attempt to track directly
             setTimeout(() => {
               try {
-                console.log('Sending express checkout purchase event to Google Analytics:', {
-                  paymentIntentId: result.paymentIntent.id,
-                  total,
-                  items: cart
-                });
+                // Check if Google Tag Manager is available
+                const gtmAvailable = typeof window !== 'undefined' && 
+                                    typeof window.dataLayer !== 'undefined';
+                console.log('Google Tag Manager available:', gtmAvailable);
                 
-                trackEvent({
-                  eventType: 'purchase', // This maps to GA4's 'purchase' event
-                  items: cart.map(item => ({
-                    id: item.id,
-                    name: item.name,
-                    price: parseFloat(calculateDiscountedPrice(item)) || 0,
-                    quantity: parseInt(item.quantity) || 1,
-                  })),
-                  value: parseFloat(total) || 0,
-                  currency: 'GBP',
-                  transaction_id: result.paymentIntent.id,
-                  userId: contact.email, // Add user identifier
-                  metadata: { 
-                    payment_method: 'express_checkout',
-                    checkout_type: 'express',
-                    order_status: 'confirmed'
-                  },
-                });
-                
-                // Also try the alternative event name that might be used in GA4 mapping
-                trackEvent({
-                  eventType: 'order_completed',
-                  items: cart.map(item => ({
-                    id: item.id,
-                    name: item.name,
-                    price: parseFloat(calculateDiscountedPrice(item)) || 0,
-                    quantity: parseInt(item.quantity) || 1,
-                  })),
-                  value: parseFloat(total) || 0,
-                  currency: 'GBP',
-                  transaction_id: result.paymentIntent.id,
-                  userId: contact.email,
-                  metadata: { 
-                    payment_method: 'express_checkout',
-                    checkout_type: 'express',
-                    order_status: 'confirmed'
-                  },
-                });
-              } catch (trackingError) {
-                console.error('Error tracking express checkout purchase event:', trackingError);
-              }
+                // Direct dataLayer push (bypasses CSP issues with gtag)
+                if (gtmAvailable) {
+                  try {
+                    window.dataLayer.push({
+                        'event': 'purchase',
+                        'ecommerce': {
+                          'purchase': {
+                            'transaction_id': result.paymentIntent.id,
+                            'value': parseFloat(total) || 0,
+                            'currency': 'GBP',
+                            'items': cart.map(item => ({
+                              'item_id': item.id,
+                              'item_name': item.name || item.title,
+                              'price': parseFloat(item.price) || 0,
+                              'quantity': parseInt(item.quantity) || 1,
+                            }))
+                          }
+                        },
+                        'userId': contact.email,
+                        'payment_method': 'stripe_express',
+                        'checkout_type': 'express',
+                        'order_status': 'confirmed'
+                      });
+                      console.log('Direct dataLayer push for purchase event successful');
+                    } catch (dataLayerError) {
+                      console.error('Error pushing to dataLayer:', dataLayerError);
+                    }
+                  }
+                  
+                  // Track the purchase event for conversion tracking
+                  trackEvent({
+                    eventType: 'purchase', // This maps to GA4's 'purchase' event
+                    items: cart.map(item => ({
+                      id: item.id,
+                      name: item.name || item.title,
+                      price: parseFloat(item.price) || 0,
+                      quantity: parseInt(item.quantity) || 1,
+                    })),
+                    value: parseFloat(total) || 0,
+                    currency: 'GBP',
+                    transaction_id: result.paymentIntent.id,
+                    userId: contact.email, // Add user identifier
+                    metadata: { 
+                      payment_method: 'stripe_express',
+                      checkout_type: 'express',
+                      order_status: 'confirmed'
+                    },
+                  });
+                  console.log('trackEvent called for purchase event');
+                  
+                  // Also try the alternative event name that might be used in GA4 mapping
+                  trackEvent({
+                    eventType: 'order_completed',
+                    items: cart.map(item => ({
+                      id: item.id,
+                      name: item.name || item.title,
+                      price: parseFloat(item.price) || 0,
+                      quantity: parseInt(item.quantity) || 1,
+                    })),
+                    value: parseFloat(total) || 0,
+                    currency: 'GBP',
+                    transaction_id: result.paymentIntent.id,
+                    userId: contact.email,
+                    metadata: { 
+                      payment_method: 'stripe_express',
+                      checkout_type: 'express',
+                      order_status: 'confirmed'
+                    },
+                  });
+                  console.log('trackEvent called for order_completed event');
+                  
+                  // Attempt to store the event directly in Supabase as a backup
+                  try {
+                    const { supabase } = require('../../lib/supabase/client');
+                    supabase.from('user_events').insert([{
+                      event_type: 'purchase',
+                      user_id: contact.email,
+                      product_id: null,
+                      quantity: cart.reduce((sum, item) => sum + (parseInt(item.quantity) || 1), 0),
+                      metadata: {
+                        items: cart,
+                        value: parseFloat(total) || 0,
+                        currency: 'GBP',
+                        transaction_id: result.paymentIntent.id,
+                        payment_method: 'stripe_express',
+                        checkout_type: 'express',
+                        order_status: 'confirmed'
+                      }
+                    }]).then(result => {
+                      console.log('Direct Supabase event insert result:', result);
+                    }).catch(err => {
+                      console.error('Direct Supabase event insert error:', err);
+                    });
+                  } catch (supabaseError) {
+                    console.error('Error with direct Supabase event insert:', supabaseError);
+                  }
+                } catch (trackingError) {
+                  console.error('Error tracking purchase event:', trackingError);
+                }
+              }, 500); // Small delay to ensure everything is loaded
+              
+              // Try again after a longer delay as a backup
+              setTimeout(() => {
+                try {
+                  console.log('Attempting backup purchase event tracking after delay');
+                  trackEvent({
+                    eventType: 'purchase',
+                    items: cart.map(item => ({
+                      id: item.id,
+                      name: item.name || item.title,
+                      price: parseFloat(item.price) || 0,
+                      quantity: parseInt(item.quantity) || 1,
+                    })),
+                    value: parseFloat(total) || 0,
+                    currency: 'GBP',
+                    transaction_id: result.paymentIntent.id,
+                    userId: contact.email,
+                    metadata: { 
+                      payment_method: 'stripe_express',
+                      checkout_type: 'express',
+                      order_status: 'confirmed',
+                      is_backup_event: true
+                    },
+                  });
+                } catch (backupTrackingError) {
+                  console.error('Error in backup tracking attempt:', backupTrackingError);
+                }
+              }, 2000); // Longer delay for backup attempt
             }, 500); // Small delay to ensure everything is loaded
             
             // Store order in database with schema-compatible fields
@@ -1297,7 +1390,7 @@ export default function CheckoutScreen() {
               subtotal,
               discount: discountAmount,
               shipping: shippingCost,
-              contact
+              contact: contact
             };
             
             try {
@@ -1350,7 +1443,7 @@ export default function CheckoutScreen() {
               applePay: 'never',
               googlePay: 'never',
               link: 'never',
-              amazonPay: 'never',
+              amazonPay: 'never'
             },
           }}
           onConfirm={handleConfirmPayment}
