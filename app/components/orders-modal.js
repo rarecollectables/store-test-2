@@ -29,10 +29,16 @@ function getUserOrders(email) {
 export async function storeOrder(order, email) {
   // First save to database (if possible)
   try {
-    // Save to Supabase database
-    await saveOrderToDatabase(order);
+    console.log('storeOrder: Attempting to save order to database:', order);
+    // Save to Supabase database with better error handling
+    const result = await saveOrderToDatabase(order);
+    console.log('storeOrder: Database save result:', result);
+    
+    if (!result) {
+      console.error('storeOrder: Database save returned no result');
+    }
   } catch (err) {
-    console.error('Failed to save order to database:', err);
+    console.error('storeOrder: Failed to save order to database:', err);
     // Continue with localStorage save even if database fails
   }
 
