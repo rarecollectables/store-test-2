@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { storeOrder } from './components/orders-modal';
+import { trackEvent } from '../lib/trackEvent';
 import { loadStripe } from '@stripe/stripe-js';
 
 // Define getUserOrders function directly to avoid import issues
@@ -79,6 +80,24 @@ export default function CheckoutSuccess() {
                   
                   // Store the order in both localStorage and database
                   await storeOrder(orderData, email);
+                  
+                  // Track purchase event
+                  try {
+                    await trackEvent({
+                      eventType: 'purchase',
+                      value: total,
+                      currency: 'GBP',
+                      transaction_id: orderNumber,
+                      items: cart.map(item => ({
+                        id: item.id,
+                        name: item.title || item.name,
+                        quantity: item.quantity,
+                        price: item.price
+                      }))
+                    });
+                  } catch (trackError) {
+                    console.error('Error tracking purchase event:', trackError);
+                  }
                   
                   // Clear cart data
                   localStorage.removeItem('cartData');

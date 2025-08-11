@@ -359,13 +359,13 @@ export default function CheckoutScreen() {
       await storeOrder(orderData);
       
       // Send order confirmation email
-      fetch('/.netlify/functions/send-order-confirmation', {
+      fetch('/.netlify/functions/sendConfirmationEmail', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: email,
+          to: email,
           order: orderData,
         }),
       });
@@ -1257,7 +1257,7 @@ export default function CheckoutScreen() {
               await storeOrder(orderData);
               
               // Send order confirmation email
-              fetch('/.netlify/functions/send-order-confirmation', {
+              fetch('/.netlify/functions/sendConfirmationEmail', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',

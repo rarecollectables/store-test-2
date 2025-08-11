@@ -1,5 +1,16 @@
-const sgMail = require('@sendgrid/mail');
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
+const nodemailer = require('nodemailer');
+
+// Create a transporter object using Gmail SMTP
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS
+  },
+  debug: true,
+  logger: true
+});
 
 // HTTP handler for Netlify Functions
 exports.handler = async (event) => {
@@ -55,18 +66,15 @@ async function sendConfirmationEmail({ to, order, relatedProducts = [] }) {
   console.log('[EMAIL DEBUG] Starting sendConfirmationEmail function with:', { to, order: JSON.stringify(order) });
   
   if (!to) throw new Error('Recipient email required');
-  if (!process.env.SENDGRID_API_KEY) {
-    console.error('[EMAIL DEBUG] Missing SENDGRID_API_KEY environment variable');
-    throw new Error('SendGrid API key is missing');
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS) {
+    console.error('[EMAIL DEBUG] Missing Gmail credentials');
+    throw new Error('Gmail credentials are missing');
   }
   
-  const msg = {
-    to,
+  const mailOptions = {
+    to: to,
     bcc: ['carecentre@rarecollectables.co.uk', 'rarecollectablesshop@gmail.com', ...(process.env.ORDER_BCC_EMAIL ? [process.env.ORDER_BCC_EMAIL] : [])],
-    from: {
-      email: process.env.SENDGRID_FROM_EMAIL || 'no-reply@rarecollectables.com',
-      name: 'Rare Collectables'
-    },
+    from: `"Rare Collectables" <${process.env.GMAIL_USER}>`,
     replyTo: 'rarecollectablessales@gmail.com',
     subject: 'Order Confirmation - Rare Collectables',
     text: `Thank you for your purchase!
@@ -152,23 +160,17 @@ Rare Collectables Team`,
   };
   try {
     console.log('[EMAIL DEBUG] Attempting to send email with payload:', {
-      to: msg.to,
-      from: msg.from.email,
-      subject: msg.subject,
-      bcc: msg.bcc
+      to: mailOptions.to,
+      from: mailOptions.from,
+      subject: mailOptions.subject,
+      bcc: mailOptions.bcc
     });
     
-    const result = await sgMail.send(msg);
-    console.log('[EMAIL DEBUG] Email sent successfully:', result);
+    const result = await transporter.sendMail(mailOptions);
+    console.log('[EMAIL DEBUG] Email sent successfully via Gmail SMTP:', result);
     return result;
   } catch (error) {
-    console.error('[EMAIL DEBUG] SendGrid error:', error.toString());
-    if (error.response) {
-      console.error('[EMAIL DEBUG] SendGrid error details:', {
-        body: error.response.body,
-        statusCode: error.response.statusCode
-      });
-    }
+    console.error('[EMAIL DEBUG] Gmail SMTP error:', error.toString());
     throw error;
   }
 }
