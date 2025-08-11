@@ -1,9 +1,0 @@
-{
-  "name": "rare-collectables-netlify-functions",
-  "version": "1.0.0",
-  "description": "Netlify serverless functions for Rare Collectables store",
-  "main": "index.js",
-  "dependencies": {
-    "nodemailer": "^6.9.9"
-  }
-}

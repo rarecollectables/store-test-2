@@ -359,13 +359,13 @@ export default function CheckoutScreen() {
       await storeOrder(orderData);
       
       // Send order confirmation email
-      fetch('/.netlify/functions/sendConfirmationEmail', {
+      fetch('/.netlify/functions/send-order-confirmation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          to: email,
+          email: email,
           order: orderData,
         }),
       });
@@ -1225,171 +1225,31 @@ export default function CheckoutScreen() {
             setMessage('Payment successful!');
             
             // Track purchase conversion for Google Analytics
-            console.log('Preparing to track purchase event with data:', {
-              paymentIntentId: result.paymentIntent.id,
-              total,
-              cart,
-              email: contact.email
+            trackEvent({
+              eventType: 'purchase',
+              items: cart.map(item => ({
+                id: item.id,
+                name: item.name,
+                price: calculateDiscountedPrice(item),
+                quantity: item.quantity,
+              })),
+              value: total,
+              currency: 'GBP',
+              transaction_id: result.paymentIntent.id,
+              metadata: { payment_method: 'express_checkout' },
             });
             
-            // First attempt to track directly
-            setTimeout(() => {
-              try {
-                // Check if Google Tag Manager is available
-                const gtmAvailable = typeof window !== 'undefined' && 
-                                    typeof window.dataLayer !== 'undefined';
-                console.log('Google Tag Manager available:', gtmAvailable);
-                
-                // Direct dataLayer push (bypasses CSP issues with gtag)
-                if (gtmAvailable) {
-                  try {
-                    window.dataLayer.push({
-                        'event': 'purchase',
-                        'ecommerce': {
-                          'purchase': {
-                            'transaction_id': result.paymentIntent.id,
-                            'value': parseFloat(total) || 0,
-                            'currency': 'GBP',
-                            'items': cart.map(item => ({
-                              'item_id': item.id,
-                              'item_name': item.name || item.title,
-                              'price': parseFloat(item.price) || 0,
-                              'quantity': parseInt(item.quantity) || 1,
-                            }))
-                          }
-                        },
-                        'userId': contact.email,
-                        'payment_method': 'stripe_express',
-                        'checkout_type': 'express',
-                        'order_status': 'confirmed'
-                      });
-                      console.log('Direct dataLayer push for purchase event successful');
-                    } catch (dataLayerError) {
-                      console.error('Error pushing to dataLayer:', dataLayerError);
-                    }
-                  }
-                  
-                  // Track the purchase event for conversion tracking
-                  trackEvent({
-                    eventType: 'purchase', // This maps to GA4's 'purchase' event
-                    items: cart.map(item => ({
-                      id: item.id,
-                      name: item.name || item.title,
-                      price: parseFloat(item.price) || 0,
-                      quantity: parseInt(item.quantity) || 1,
-                    })),
-                    value: parseFloat(total) || 0,
-                    currency: 'GBP',
-                    transaction_id: result.paymentIntent.id,
-                    userId: contact.email, // Add user identifier
-                    metadata: { 
-                      payment_method: 'stripe_express',
-                      checkout_type: 'express',
-                      order_status: 'confirmed'
-                    },
-                  });
-                  console.log('trackEvent called for purchase event');
-                  
-                  // Also try the alternative event name that might be used in GA4 mapping
-                  trackEvent({
-                    eventType: 'order_completed',
-                    items: cart.map(item => ({
-                      id: item.id,
-                      name: item.name || item.title,
-                      price: parseFloat(item.price) || 0,
-                      quantity: parseInt(item.quantity) || 1,
-                    })),
-                    value: parseFloat(total) || 0,
-                    currency: 'GBP',
-                    transaction_id: result.paymentIntent.id,
-                    userId: contact.email,
-                    metadata: { 
-                      payment_method: 'stripe_express',
-                      checkout_type: 'express',
-                      order_status: 'confirmed'
-                    },
-                  });
-                  console.log('trackEvent called for order_completed event');
-                  
-                  // Attempt to store the event directly in Supabase as a backup
-                  try {
-                    const { supabase } = require('../../lib/supabase/client');
-                    supabase.from('user_events').insert([{
-                      event_type: 'purchase',
-                      user_id: contact.email,
-                      product_id: null,
-                      quantity: cart.reduce((sum, item) => sum + (parseInt(item.quantity) || 1), 0),
-                      metadata: {
-                        items: cart,
-                        value: parseFloat(total) || 0,
-                        currency: 'GBP',
-                        transaction_id: result.paymentIntent.id,
-                        payment_method: 'stripe_express',
-                        checkout_type: 'express',
-                        order_status: 'confirmed'
-                      }
-                    }]).then(result => {
-                      console.log('Direct Supabase event insert result:', result);
-                    }).catch(err => {
-                      console.error('Direct Supabase event insert error:', err);
-                    });
-                  } catch (supabaseError) {
-                    console.error('Error with direct Supabase event insert:', supabaseError);
-                  }
-                } catch (trackingError) {
-                  console.error('Error tracking purchase event:', trackingError);
-                }
-              }, 500); // Small delay to ensure everything is loaded
-              
-              // Try again after a longer delay as a backup
-              setTimeout(() => {
-                try {
-                  console.log('Attempting backup purchase event tracking after delay');
-                  trackEvent({
-                    eventType: 'purchase',
-                    items: cart.map(item => ({
-                      id: item.id,
-                      name: item.name || item.title,
-                      price: parseFloat(item.price) || 0,
-                      quantity: parseInt(item.quantity) || 1,
-                    })),
-                    value: parseFloat(total) || 0,
-                    currency: 'GBP',
-                    transaction_id: result.paymentIntent.id,
-                    userId: contact.email,
-                    metadata: { 
-                      payment_method: 'stripe_express',
-                      checkout_type: 'express',
-                      order_status: 'confirmed',
-                      is_backup_event: true
-                    },
-                  });
-                } catch (backupTrackingError) {
-                  console.error('Error in backup tracking attempt:', backupTrackingError);
-                }
-              }, 2000);  // Small delay to ensure everything is loaded
-            
-            // Store order in database with schema-compatible fields
+            // Store order in database
             const orderData = {
-              // Fields that match the schema
-              status: 'confirmed', // Changed from 'paid' to 'confirmed' for consistency
-              total_amount: total,
-              total: total, // Keep for backward compatibility
-              shipping_address: address,
-              payment_method: 'express_checkout',
-              payment_intent_id: result.paymentIntent.id,
-              payment_id: result.paymentIntent.id, // Keep for backward compatibility
-              currency: 'GBP',
-              contact_email: contact.email,
-              email: contact.email, // Keep for backward compatibility
-              quantity: cart.reduce((sum, item) => sum + (item.quantity || 1), 0),
-              product_image: cart.length > 0 ? cart[0].image_url || cart[0].image_path || null : null,
-              // Additional fields for local storage
+              email: contact.email,
               items: cart,
               subtotal,
               discount: discountAmount,
               shipping: shippingCost,
-              contact: contact
+              total,
+              payment_method: 'express_checkout',
+              payment_id: result.paymentIntent.id,
+              status: 'paid',
             };
             
             try {
@@ -1397,7 +1257,7 @@ export default function CheckoutScreen() {
               await storeOrder(orderData);
               
               // Send order confirmation email
-              fetch('/.netlify/functions/sendConfirmationEmail', {
+              fetch('/.netlify/functions/send-order-confirmation', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -1442,8 +1302,8 @@ export default function CheckoutScreen() {
               applePay: 'never',
               googlePay: 'never',
               link: 'never',
-              amazonPay: 'never'
-            }
+              amazonPay: 'never',
+            },
           }}
           onConfirm={handleConfirmPayment}
         />
