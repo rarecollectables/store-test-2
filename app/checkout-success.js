@@ -3,7 +3,6 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { storeOrder } from './components/orders-modal';
 import { trackEvent } from '../lib/trackEvent';
 import { loadStripe } from '@stripe/stripe-js';
-import { trackEvent } from '../lib/trackEvent';
 
 // Define getUserOrders function directly to avoid import issues
 function getUserOrders(email) {
