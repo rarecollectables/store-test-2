@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { storeOrder } from './components/orders-modal';
 import { loadStripe } from '@stripe/stripe-js';
+import { trackEvent } from '../lib/trackEvent';
 
 // Define getUserOrders function directly to avoid import issues
 function getUserOrders(email) {
@@ -59,22 +60,43 @@ export default function CheckoutSuccess() {
               const cartData = localStorage.getItem('cartData');
               if (cartData) {
                 const { cart, contact, address, total } = JSON.parse(cartData);
+                
+                // Track purchase conversion for Google Analytics
+                trackEvent({
+                  eventType: 'purchase',
+                  items: cart.map(item => ({
+                    id: item.id,
+                    name: item.name || item.title,
+                    price: item.price,
+                    quantity: item.quantity,
+                  })),
+                  value: total,
+                  currency: 'GBP',
+                  transaction_id: paymentIntentId,
+                  metadata: { payment_method: 'stripe_checkout' },
+                });
+                
                 try {
                   // Generate a customer-friendly order number (current date + random numbers)
                   const orderDate = new Date();
                   const orderNumber = `ORD-${orderDate.getFullYear()}${String(orderDate.getMonth() + 1).padStart(2, '0')}${String(orderDate.getDate()).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
                   
-                  // Create the order object
+                  // Create the order object matching the database schema
                   const orderData = {
-                    id: orderNumber,
                     date: orderDate.toISOString(),
                     items: cart,
-                    contact,
-                    address,
-                    total,
-                    paymentIntentId: paymentIntentId,
-                    paymentMethod: paymentIntent.payment_method_types?.[0] || 'unknown',
-                    status: 'confirmed'
+                    // Fields that match the schema
+                    status: 'confirmed',
+                    total_amount: total,
+                    total: total, // Keep for backward compatibility
+                    shipping_address: address,
+                    payment_method: paymentIntent.payment_method_types?.[0] || 'card',
+                    payment_intent_id: paymentIntentId,
+                    paymentIntentId: paymentIntentId, // Keep for backward compatibility
+                    currency: 'GBP',
+                    contact_email: email,
+                    email: email, // Keep for backward compatibility
+                    contact: contact // Keep contact info for local storage
                   };
                   
                   // Store the order in both localStorage and database

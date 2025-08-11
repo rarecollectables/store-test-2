@@ -1239,17 +1239,27 @@ export default function CheckoutScreen() {
               metadata: { payment_method: 'express_checkout' },
             });
             
-            // Store order in database
+            // Store order in database with schema-compatible fields
             const orderData = {
-              email: contact.email,
+              // Fields that match the schema
+              status: 'confirmed', // Changed from 'paid' to 'confirmed' for consistency
+              total_amount: total,
+              total: total, // Keep for backward compatibility
+              shipping_address: address,
+              payment_method: 'express_checkout',
+              payment_intent_id: result.paymentIntent.id,
+              payment_id: result.paymentIntent.id, // Keep for backward compatibility
+              currency: 'GBP',
+              contact_email: contact.email,
+              email: contact.email, // Keep for backward compatibility
+              quantity: cart.reduce((sum, item) => sum + (item.quantity || 1), 0),
+              product_image: cart.length > 0 ? cart[0].image_url || cart[0].image_path || null : null,
+              // Additional fields for local storage
               items: cart,
               subtotal,
               discount: discountAmount,
               shipping: shippingCost,
-              total,
-              payment_method: 'express_checkout',
-              payment_id: result.paymentIntent.id,
-              status: 'paid',
+              contact
             };
             
             try {
