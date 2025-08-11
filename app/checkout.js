@@ -1225,19 +1225,57 @@ export default function CheckoutScreen() {
             setMessage('Payment successful!');
             
             // Track purchase conversion for Google Analytics
-            trackEvent({
-              eventType: 'purchase',
-              items: cart.map(item => ({
-                id: item.id,
-                name: item.name,
-                price: calculateDiscountedPrice(item),
-                quantity: item.quantity,
-              })),
-              value: total,
-              currency: 'GBP',
-              transaction_id: result.paymentIntent.id,
-              metadata: { payment_method: 'express_checkout' },
-            });
+            // Ensure Google Tag is loaded before sending the event
+            setTimeout(() => {
+              try {
+                console.log('Sending express checkout purchase event to Google Analytics:', {
+                  paymentIntentId: result.paymentIntent.id,
+                  total,
+                  items: cart
+                });
+                
+                trackEvent({
+                  eventType: 'purchase', // This maps to GA4's 'purchase' event
+                  items: cart.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    price: parseFloat(calculateDiscountedPrice(item)) || 0,
+                    quantity: parseInt(item.quantity) || 1,
+                  })),
+                  value: parseFloat(total) || 0,
+                  currency: 'GBP',
+                  transaction_id: result.paymentIntent.id,
+                  userId: contact.email, // Add user identifier
+                  metadata: { 
+                    payment_method: 'express_checkout',
+                    checkout_type: 'express',
+                    order_status: 'confirmed'
+                  },
+                });
+                
+                // Also try the alternative event name that might be used in GA4 mapping
+                trackEvent({
+                  eventType: 'order_completed',
+                  items: cart.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    price: parseFloat(calculateDiscountedPrice(item)) || 0,
+                    quantity: parseInt(item.quantity) || 1,
+                  })),
+                  value: parseFloat(total) || 0,
+                  currency: 'GBP',
+                  transaction_id: result.paymentIntent.id,
+                  userId: contact.email,
+                  metadata: { 
+                    payment_method: 'express_checkout',
+                    checkout_type: 'express',
+                    order_status: 'confirmed'
+                  },
+                });
+              } catch (trackingError) {
+                console.error('Error tracking express checkout purchase event:', trackingError);
+              }
+            }, 500); // Small delay to ensure everything is loaded
             
             // Store order in database with schema-compatible fields
             const orderData = {

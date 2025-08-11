@@ -62,19 +62,57 @@ export default function CheckoutSuccess() {
                 const { cart, contact, address, total } = JSON.parse(cartData);
                 
                 // Track purchase conversion for Google Analytics
-                trackEvent({
-                  eventType: 'purchase',
-                  items: cart.map(item => ({
-                    id: item.id,
-                    name: item.name || item.title,
-                    price: item.price,
-                    quantity: item.quantity,
-                  })),
-                  value: total,
-                  currency: 'GBP',
-                  transaction_id: paymentIntentId,
-                  metadata: { payment_method: 'stripe_checkout' },
-                });
+                // Ensure Google Tag is loaded before sending the event
+                setTimeout(() => {
+                  try {
+                    console.log('Sending purchase event to Google Analytics:', {
+                      paymentIntentId,
+                      total,
+                      items: cart
+                    });
+                    
+                    trackEvent({
+                      eventType: 'purchase', // This maps to GA4's 'purchase' event
+                      items: cart.map(item => ({
+                        id: item.id,
+                        name: item.name || item.title,
+                        price: parseFloat(item.price) || 0,
+                        quantity: parseInt(item.quantity) || 1,
+                      })),
+                      value: parseFloat(total) || 0,
+                      currency: 'GBP',
+                      transaction_id: paymentIntentId,
+                      userId: email, // Add user identifier
+                      metadata: { 
+                        payment_method: 'stripe_checkout',
+                        checkout_type: 'regular',
+                        order_status: 'confirmed'
+                      },
+                    });
+                    
+                    // Also try the alternative event name that might be used in GA4 mapping
+                    trackEvent({
+                      eventType: 'order_completed',
+                      items: cart.map(item => ({
+                        id: item.id,
+                        name: item.name || item.title,
+                        price: parseFloat(item.price) || 0,
+                        quantity: parseInt(item.quantity) || 1,
+                      })),
+                      value: parseFloat(total) || 0,
+                      currency: 'GBP',
+                      transaction_id: paymentIntentId,
+                      userId: email,
+                      metadata: { 
+                        payment_method: 'stripe_checkout',
+                        checkout_type: 'regular',
+                        order_status: 'confirmed'
+                      },
+                    });
+                  } catch (trackingError) {
+                    console.error('Error tracking purchase event:', trackingError);
+                  }
+                }, 500); // Small delay to ensure everything is loaded
                 
                 try {
                   // Generate a customer-friendly order number (current date + random numbers)
