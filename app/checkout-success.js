@@ -39,6 +39,7 @@ export default function CheckoutSuccess() {
     const checkPaymentStatus = async () => {
       try {
         setLoading(true);
+        console.log('=== CHECKOUT SUCCESS PAGE LOADED ===');
         
         // Check if this is a redirect with payment_intent and redirect_status
         const queryString = window.location.search;
@@ -46,24 +47,41 @@ export default function CheckoutSuccess() {
         const paymentIntentId = urlParams.get('payment_intent');
         const redirectStatus = urlParams.get('redirect_status');
         
+        console.log('URL Parameters:', { paymentIntentId, redirectStatus, queryString });
+        
         // If we have payment_intent in the URL (redirect from Klarna/PayPal)
         if (paymentIntentId && redirectStatus === 'succeeded') {
+          console.log('Payment intent found with success status, verifying with Stripe...');
           // Load Stripe to verify the payment
           const stripe = await loadStripe(process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+          console.log('Stripe loaded, retrieving payment intent:', paymentIntentId);
           const { paymentIntent } = await stripe.retrievePaymentIntent(paymentIntentId);
+          console.log('Payment intent retrieved:', paymentIntent?.status);
           
           if (paymentIntent && paymentIntent.status === 'succeeded') {
+            console.log('Payment intent confirmed as succeeded, proceeding with order processing');
             // If we have email in params, store the order
             const email = params.email;
+            console.log('Email from params:', email);
             if (email) {
               // Get cart and contact info from localStorage if available
+              console.log('Attempting to retrieve cart data from localStorage');
               const cartData = localStorage.getItem('cartData');
+              console.log('Cart data retrieved from localStorage:', cartData ? 'Found' : 'Not found');
               if (cartData) {
                 const { cart, contact, address, total } = JSON.parse(cartData);
+                console.log('Cart data parsed successfully:', { 
+                  cartItems: cart?.length, 
+                  hasContact: !!contact, 
+                  hasAddress: !!address, 
+                  total 
+                });
                 try {
+                  console.log('Creating order from cart data...');
                   // Generate a customer-friendly order number (current date + random numbers)
                   const orderDate = new Date();
                   const orderNumber = `ORD-${orderDate.getFullYear()}${String(orderDate.getMonth() + 1).padStart(2, '0')}${String(orderDate.getDate()).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+                  console.log('Generated order number:', orderNumber);
                   
                   // Create the order object
                   const orderData = {
@@ -77,48 +95,98 @@ export default function CheckoutSuccess() {
                     paymentMethod: paymentIntent.payment_method_types?.[0] || 'unknown',
                     status: 'confirmed'
                   };
+                  console.log('Order data created:', JSON.stringify(orderData, null, 2));
                   
                   // Track purchase event for analytics
                   console.log('Tracking purchase event for analytics');
-                  trackEvent({
-                    eventType: 'purchase',
-                    items: cart.map(item => ({
-                      id: item.id,
-                      name: item.name || item.title,
-                      price: parseFloat(item.price),
-                      quantity: item.quantity,
-                    })),
-                    value: total,
-                    currency: 'GBP',
-                    transaction_id: orderNumber,
-                    metadata: { payment_method: paymentIntent.payment_method_types?.[0] || 'card' },
-                  });
+                  try {
+                    // Try direct dataLayer push as a backup method
+                    if (typeof window !== 'undefined' && window.dataLayer) {
+                      console.log('Pushing directly to dataLayer');
+                      window.dataLayer.push({
+                        'event': 'purchase',
+                        'ecommerce': {
+                          'transaction_id': orderNumber,
+                          'value': total,
+                          'currency': 'GBP',
+                          'items': cart.map(item => ({
+                            'item_id': item.id,
+                            'item_name': item.name || item.title,
+                            'price': parseFloat(item.price),
+                            'quantity': item.quantity
+                          }))
+                        }
+                      });
+                    }
+                    
+                    // Use our trackEvent function
+                    console.log('Calling trackEvent function');
+                    trackEvent({
+                      eventType: 'purchase',
+                      items: cart.map(item => ({
+                        id: item.id,
+                        name: item.name || item.title,
+                        price: parseFloat(item.price),
+                        quantity: item.quantity,
+                      })),
+                      value: total,
+                      currency: 'GBP',
+                      transaction_id: orderNumber,
+                      metadata: { payment_method: paymentIntent.payment_method_types?.[0] || 'card' },
+                    });
+                    console.log('trackEvent function called successfully');
+                  } catch (trackErr) {
+                    console.error('Error tracking purchase event:', trackErr);
+                  }
                   
                   // Store the order in both localStorage and database
                   console.log('Storing order in database:', orderData);
-                  await storeOrder(orderData, email);
+                  try {
+                    const storeResult = await storeOrder(orderData, email);
+                    console.log('Order storage result:', storeResult);
+                    
+                    // Check if we got a valid result from storeOrder
+                    if (!storeResult) {
+                      console.warn('storeOrder returned no result, but did not throw an error');
+                    }
+                  } catch (storeError) {
+                    console.error('Error storing order:', storeError);
+                  }
                   
                   // Send order confirmation email
                   try {
                     console.log('Sending order confirmation email to:', email);
                     // Use the correct endpoint and payload structure
                     // The Netlify function expects 'to' instead of 'email'
+                    const emailPayload = {
+                      to: email, // Changed from 'email' to 'to' to match backend expectation
+                      order: orderData
+                    };
+                    console.log('Email payload:', JSON.stringify(emailPayload, null, 2));
+                    
                     const emailResponse = await fetch('/.netlify/functions/send-order-confirmation', {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
                       },
-                      body: JSON.stringify({
-                        to: email, // Changed from 'email' to 'to' to match backend expectation
-                        order: orderData
-                      })
+                      body: JSON.stringify(emailPayload)
                     });
                     
-                    const emailResult = await emailResponse.json();
-                    console.log('Email sending result:', emailResult);
+                    console.log('Email response status:', emailResponse.status, emailResponse.statusText);
                     
-                    if (!emailResponse.ok) {
-                      console.error('Failed to send order confirmation email:', emailResult);
+                    try {
+                      const emailResult = await emailResponse.json();
+                      console.log('Email sending result:', emailResult);
+                      
+                      if (!emailResponse.ok) {
+                        console.error('Failed to send order confirmation email:', emailResult);
+                      } else {
+                        console.log('Email sent successfully!');
+                      }
+                    } catch (jsonError) {
+                      console.error('Error parsing email response JSON:', jsonError);
+                      const textResponse = await emailResponse.text();
+                      console.log('Raw email response:', textResponse);
                     }
                   } catch (emailError) {
                     console.error('Error sending order confirmation email:', emailError);
