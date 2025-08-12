@@ -41,28 +41,85 @@ export default function CheckoutSuccess() {
         setLoading(true);
         console.log('=== CHECKOUT SUCCESS PAGE LOADED ===');
         
-        // Check if this is a redirect with payment_intent and redirect_status
+        // Check for URL parameters from different payment flows
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
         const paymentIntentId = urlParams.get('payment_intent');
         const redirectStatus = urlParams.get('redirect_status');
+        const sessionId = urlParams.get('session_id');
         
-        console.log('URL Parameters:', { paymentIntentId, redirectStatus, queryString });
+        console.log('URL Parameters:', { paymentIntentId, redirectStatus, sessionId, queryString });
         
-        // If we have payment_intent in the URL (redirect from Klarna/PayPal)
-        if (paymentIntentId && redirectStatus === 'succeeded') {
-          console.log('Payment intent found with success status, verifying with Stripe...');
+        // Handle both payment_intent flow and session_id (Stripe Checkout) flow
+        if ((paymentIntentId && redirectStatus === 'succeeded') || sessionId) {
+          console.log('Payment verification needed, loading Stripe...');
           // Load Stripe to verify the payment
           const stripe = await loadStripe(process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY);
-          console.log('Stripe loaded, retrieving payment intent:', paymentIntentId);
-          const { paymentIntent } = await stripe.retrievePaymentIntent(paymentIntentId);
-          console.log('Payment intent retrieved:', paymentIntent?.status);
+          console.log('Stripe loaded successfully');
           
-          if (paymentIntent && paymentIntent.status === 'succeeded') {
-            console.log('Payment intent confirmed as succeeded, proceeding with order processing');
-            // If we have email in params, store the order
-            const email = params.email;
-            console.log('Email from params:', email);
+          // Handle different payment flows
+          let paymentSuccess = false;
+          let paymentDetails = null;
+          
+          if (paymentIntentId && redirectStatus === 'succeeded') {
+            // Payment Intent flow (Klarna/PayPal)
+            console.log('Retrieving payment intent:', paymentIntentId);
+            const { paymentIntent } = await stripe.retrievePaymentIntent(paymentIntentId);
+            console.log('Payment intent retrieved:', paymentIntent?.status);
+            
+            if (paymentIntent && paymentIntent.status === 'succeeded') {
+              paymentSuccess = true;
+              paymentDetails = paymentIntent;
+            }
+          } else if (sessionId) {
+            // Stripe Checkout Session flow
+            console.log('Retrieving checkout session:', sessionId);
+            try {
+              // Use fetch to retrieve session from our backend
+              const sessionResponse = await fetch(`/.netlify/functions/retrieve-checkout-session?session_id=${sessionId}`);
+              if (sessionResponse.ok) {
+                const sessionData = await sessionResponse.json();
+                console.log('Session data retrieved:', sessionData);
+                
+                if (sessionData.session && sessionData.session.payment_status === 'paid') {
+                  paymentSuccess = true;
+                  paymentDetails = {
+                    id: sessionData.session.payment_intent,
+                    status: 'succeeded',
+                    payment_method_types: [sessionData.session.payment_method_types?.[0] || 'card']
+                  };
+                }
+              } else {
+                console.error('Failed to retrieve session:', await sessionResponse.text());
+              }
+            } catch (sessionError) {
+              console.error('Error retrieving session:', sessionError);
+            }
+          }
+          
+          if (paymentSuccess) {
+            console.log('Payment confirmed as succeeded, proceeding with order processing');
+            
+            // Get email from params or session data
+            let email = params.email;
+            let sessionData = null;
+            
+            // If we're in session flow and don't have email, try to get it from the session
+            if (!email && sessionId) {
+              try {
+                console.log('Attempting to get customer email from session');
+                const sessionResponse = await fetch(`/.netlify/functions/retrieve-checkout-session?session_id=${sessionId}`);
+                if (sessionResponse.ok) {
+                  sessionData = await sessionResponse.json();
+                  email = sessionData.session?.customer_email;
+                  console.log('Retrieved customer email from session:', email);
+                }
+              } catch (emailError) {
+                console.error('Error retrieving customer email from session:', emailError);
+              }
+            }
+            
+            console.log('Using email:', email);
             if (email) {
               // Get cart and contact info from localStorage if available
               console.log('Attempting to retrieve cart data from localStorage');
