@@ -78,19 +78,38 @@ export default function CheckoutSuccess() {
                     status: 'confirmed'
                   };
                   
+                  // Track purchase event for analytics
+                  console.log('Tracking purchase event for analytics');
+                  trackEvent({
+                    eventType: 'purchase',
+                    items: cart.map(item => ({
+                      id: item.id,
+                      name: item.name || item.title,
+                      price: parseFloat(item.price),
+                      quantity: item.quantity,
+                    })),
+                    value: total,
+                    currency: 'GBP',
+                    transaction_id: orderNumber,
+                    metadata: { payment_method: paymentIntent.payment_method_types?.[0] || 'card' },
+                  });
+                  
                   // Store the order in both localStorage and database
+                  console.log('Storing order in database:', orderData);
                   await storeOrder(orderData, email);
                   
                   // Send order confirmation email
                   try {
                     console.log('Sending order confirmation email to:', email);
-                    const emailResponse = await fetch('/.netlify/functions/sendConfirmationEmail', {
+                    // Use the correct endpoint and payload structure
+                    // The Netlify function expects 'to' instead of 'email'
+                    const emailResponse = await fetch('/.netlify/functions/send-order-confirmation', {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
                       },
                       body: JSON.stringify({
-                        email: email,
+                        to: email, // Changed from 'email' to 'to' to match backend expectation
                         order: orderData
                       })
                     });
