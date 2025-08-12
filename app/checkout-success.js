@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { storeOrder } from './components/orders-modal';
 import { loadStripe } from '@stripe/stripe-js';
+import { trackEvent } from '../lib/trackEvent';
 
 // Define getUserOrders function directly to avoid import issues
 function getUserOrders(email) {
@@ -79,6 +80,14 @@ export default function CheckoutSuccess() {
                   
                   // Store the order in both localStorage and database
                   await storeOrder(orderData, email);
+                  
+                  // Track purchase event
+                  await trackEvent({
+                    eventType: 'purchase',
+                    items: cart,
+                    value: total,
+                    transaction_id: orderData.id
+                  });
                   
                   // Clear cart data
                   localStorage.removeItem('cartData');
