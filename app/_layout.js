@@ -8,43 +8,14 @@ import { trackEvent } from '../lib/trackEvent';
 import { getLocationInfo } from '../lib/trackEvent';
 import HomeBanner from './components/HomeBanner';
 import Header from './components/Header';
+import SEO from '../components/SEO';
 
 import CookieConsentBanner from './components/CookieConsentBanner';
 
 export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS === 'web') {
-      // Inject meta tags for SEO and social previews
-      if (!document.querySelector('meta[name="description"]')) {
-        const metaDesc = document.createElement('meta');
-        metaDesc.name = 'description';
-        metaDesc.content = 'Discover stunning heart and charm jewellery at Rare Collectables. Shop affordable luxury necklaces, bracelets, and earrings designed to make every moment special. Free shipping & exclusive offers!';
-        document.head.appendChild(metaDesc);
-      }
-      if (!document.querySelector('meta[property="og:title"]')) {
-        const ogTitle = document.createElement('meta');
-        ogTitle.setAttribute('property', 'og:title');
-        ogTitle.content = 'Rare Collectables | Affordable Luxury';
-        document.head.appendChild(ogTitle);
-      }
-      if (!document.querySelector('meta[property="og:description"]')) {
-        const ogDesc = document.createElement('meta');
-        ogDesc.setAttribute('property', 'og:description');
-        ogDesc.content = 'Discover stunning heart and charm jewellery at Rare Collectables. Shop affordable luxury necklaces, bracelets, and earrings designed to make every moment special. Free shipping & exclusive offers!';
-        document.head.appendChild(ogDesc);
-      }
-      if (!document.querySelector('meta[property="og:image"]')) {
-        const ogImg = document.createElement('meta');
-        ogImg.setAttribute('property', 'og:image');
-        ogImg.content = 'https://fhybeyomiivepmlrampr.supabase.co/storage/v1/object/public/products/Necklaces/1-2-Necklace.avif'; // <-- Using a necklace product image
-        document.head.appendChild(ogImg);
-      }
-      if (!document.querySelector('meta[property="og:type"]')) {
-        const ogType = document.createElement('meta');
-        ogType.setAttribute('property', 'og:type');
-        ogType.content = 'website';
-        document.head.appendChild(ogType);
-      }
+      // SEO meta tags are now handled by the SEO component
       // Inject Microsoft Clarity
       if (!document.getElementById('clarity-script')) {
         const script = document.createElement('script');
@@ -116,6 +87,26 @@ export default function RootLayout() {
     <PaperProvider>
       <StoreProvider>
         <SafeAreaProvider>
+          {/* Add default SEO meta tags for all pages */}
+          <SEO 
+            title="Rare Collectables | Affordable Luxury"
+            description="Discover stunning heart crafted jewellery pieces at Rare Collectables. Shop affordable luxury necklaces, bracelets, and earrings designed to make every moment special. Free shipping & exclusive offers!"
+            image="https://fhybeyomiivepmlrampr.supabase.co/storage/v1/object/public/products/Necklaces/1-2-Necklace.avif"
+            url="https://rarecollectables.co.uk"
+            type="website"
+            structuredData={{
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              "name": "Rare Collectables",
+              "url": "https://rarecollectables.co.uk",
+              "logo": "https://rarecollectables.co.uk/logo.png",
+              "description": "Discover stunning heart crafted jewellery pieces at Rare Collectables. Shop affordable luxury necklaces, bracelets, and earrings designed to make every moment special.",
+              "sameAs": [
+                "https://www.instagram.com/rarecollectables",
+                "https://www.facebook.com/rarecollectables"
+              ]
+            }}
+          />
           {Platform.OS === 'web' && (
             <div 
               dangerouslySetInnerHTML={{

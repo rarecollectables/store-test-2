@@ -15,10 +15,10 @@ import {useRouter} from 'expo-router';
 import { supabase } from '../../lib/supabase/client';
 import { trackEvent } from '../../lib/trackEvent';
 export default function FooterSection({
-  aboutText = 'Lorem Ipsum is simply dummy text of the printing and typesetting industry.',
-  socialLinks = ['facebook', 'instagram', 'linkedin'],
-  informationLinks = ['About Us', 'Blog', 'Contact', 'Services', 'Sample Page'],
-  accountLinks = ['My Account', 'Contact', 'Wishlist', 'Checkout'],
+  aboutText = 'Rare Collectables specializes in heart-crafted jewelry featuring sustainable, conflict-free stones. Our pieces are designed to celebrate love and create meaningful connections through timeless, ethically-sourced accessories.',
+  socialLinks = ['facebook', 'instagram'],
+  informationLinks = ['Blog', 'Contact', 'Return Policy', 'Privacy Policy'],
+  accountLinks = ['My Account', 'Wishlist', 'Checkout'],
 //   onSubscribe = email => {},
 }) {
   const [email, setEmail] = React.useState('');
@@ -64,28 +64,34 @@ export default function FooterSection({
           <Text style={styles.text}>{aboutText}</Text>
           <View style={styles.socialIcons}>
             {socialLinks.includes('facebook') && (
-              <FontAwesome
-                name="facebook-square"
-                size={22}
-                color="#3b5998"
-                style={styles.icon}
-              />
+              <Pressable onPress={() => router.push('https://www.facebook.com/profile.php?id=61573565127513')}>
+                <FontAwesome
+                  name="facebook-square"
+                  size={22}
+                  color="#3b5998"
+                  style={styles.icon}
+                />
+              </Pressable>
             )}
             {socialLinks.includes('instagram') && (
-              <FontAwesome
-                name="instagram"
-                size={22}
-                color="#C13584"
-                style={styles.icon}
-              />
+              <Pressable onPress={() => router.push('https://www.instagram.com/rarecollectablesshop?igsh=OXVkdXZpN3c1N2s1')}>
+                <FontAwesome
+                  name="instagram"
+                  size={22}
+                  color="#C13584"
+                  style={styles.icon}
+                />
+              </Pressable>
             )}
             {socialLinks.includes('linkedin') && (
-              <FontAwesome
-                name="linkedin-square"
-                size={22}
-                color="#0077B5"
-                style={styles.icon}
-              />
+              <Pressable onPress={() => router.push('https://www.linkedin.com/company/rare-collectables/')}>
+                <FontAwesome
+                  name="linkedin-square"
+                  size={22}
+                  color="#0077B5"
+                  style={styles.icon}
+                />
+              </Pressable>
             )}
             {socialLinks.includes('threads') && (
               <MaterialCommunityIcons
@@ -101,11 +107,39 @@ export default function FooterSection({
         {/* Info Links */}
         <View style={styles.column}>
           <Text style={styles.heading}>Information</Text>
-          {informationLinks.map((item, i) => (
-            <Text key={i} style={styles.linkText}>
-              {item}
-            </Text>
-          ))}
+          {informationLinks.map((item, i) => {
+            if (item === 'Blog') {
+              return (
+                <Pressable key={i} onPress={() => router.push('/blog')}>
+                  <Text style={styles.linkText}>{item}</Text>
+                </Pressable>
+              );
+            } else if (item === 'Contact') {
+              return (
+                <Pressable key={i} onPress={() => router.push('/contact')}>
+                  <Text style={styles.linkText}>{item}</Text>
+                </Pressable>
+              );
+            } else if (item === 'Return Policy') {
+              return (
+                <Pressable key={i} onPress={() => router.push('/return-policy')}>
+                  <Text style={styles.linkText}>{item}</Text>
+                </Pressable>
+              );
+            } else if (item === 'Privacy Policy') {
+              return (
+                <Pressable key={i} onPress={() => router.push('/privacy-policy')}>
+                  <Text style={styles.linkText}>{item}</Text>
+                </Pressable>
+              );
+            } else {
+              return (
+                <Text key={i} style={styles.linkText}>
+                  {item}
+                </Text>
+              );
+            }
+          })}
         </View>
 
         {/* Account Links */}

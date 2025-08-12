@@ -2,11 +2,27 @@ import React from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, fontFamily, spacing } from '../theme';
+import ArticleSEO from '../components/ArticleSEO';
+import Breadcrumbs from '../components/Breadcrumbs';
 
 export default function PrivacyPolicy() {
   const router = useRouter();
   return (
-    <ScrollView contentContainerStyle={styles.container} accessibilityLabel="Privacy Policy Page">
+    <>
+      {/* Add SEO metadata for privacy policy page */}
+      <ArticleSEO 
+        title="Privacy Policy | Rare Collectables"
+        description="Learn about how Rare Collectables collects, uses, and protects your personal information when you visit our website and make purchases."
+        path="/privacy-policy"
+        publishedDate="2023-01-15"
+        modifiedDate="2023-06-20"
+      />
+      <ScrollView contentContainerStyle={styles.container} accessibilityLabel="Privacy Policy Page">
+      {/* Add breadcrumbs for navigation and SEO */}
+      <Breadcrumbs
+        items={[{ label: 'Home', path: '/' }]}
+        currentPageLabel="Privacy Policy"
+      />
       <Pressable
         onPress={() => {
           if (router.canGoBack && router.canGoBack()) {
@@ -74,6 +90,7 @@ export default function PrivacyPolicy() {
         </Pressable>
       </View>
     </ScrollView>
+    </>
   );
 }
 

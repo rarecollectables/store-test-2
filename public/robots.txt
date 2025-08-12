@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /checkout
+Disallow: /checkout-success
+Disallow: /admin/
+
+# Sitemaps
+Sitemap: https://rarecollectables.co.uk/sitemap.xml

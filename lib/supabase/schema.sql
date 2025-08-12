@@ -96,7 +96,6 @@ CREATE TABLE IF NOT EXISTS orders (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     user_id UUID,
     status TEXT NOT NULL DEFAULT 'pending',
-    total_amount DECIMAL(10, 2) NOT NULL,
     shipping_address JSONB,
     billing_address JSONB,
     payment_method TEXT,
@@ -108,6 +107,7 @@ CREATE TABLE IF NOT EXISTS orders (
     contact_email VARCHAR(255), -- Customer email for confirmation
     product_image TEXT, -- Product image URL
     quantity INTEGER, -- Product quantity
+    metadata JSONB,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 

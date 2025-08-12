@@ -7,6 +7,8 @@ import ProductsList from '../(components)/products/ProductsList';
 import CartAddedModal from '../components/CartAddedModal';
 import { trackEvent } from '../../lib/trackEvent';
 import { useRouter, useGlobalSearchParams } from 'expo-router';
+import CategorySEO from '../../components/CategorySEO';
+import Breadcrumbs from '../../components/Breadcrumbs';
 
 export default function ShopScreen() {
   const router = useRouter();
@@ -73,7 +75,18 @@ export default function ShopScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.screen}>
+    <>
+      {/* Add SEO metadata for shop page */}
+      <CategorySEO 
+        category={tagParam || "All Products"}
+        description={searchParam ? `Search results for ${searchParam} at Rare Collectables` : undefined}
+      />
+      <ScrollView contentContainerStyle={styles.screen}>
+      {/* Add breadcrumbs for navigation and SEO */}
+      <Breadcrumbs
+        items={tagParam ? [{ label: 'Shop', path: '/shop' }] : []}
+        currentPageLabel={tagParam || "Shop"}
+      />
       {/* Shop Page Search Bar */}
       <View style={styles.searchContainer}>
         <TextInput
@@ -125,6 +138,7 @@ export default function ShopScreen() {
         </Pressable>
       </View>
     </ScrollView>
+    </>
   );
 }
 

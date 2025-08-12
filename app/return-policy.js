@@ -3,11 +3,27 @@ import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
 import { colors, fontFamily, spacing } from '../theme';
+import ArticleSEO from '../components/ArticleSEO';
+import Breadcrumbs from '../components/Breadcrumbs';
 
 export default function ReturnPolicyScreen() {
   const router = useRouter();
   return (
-    <ScrollView contentContainerStyle={styles.container} accessibilityLabel="Return Policy Page">
+    <>
+      {/* Add SEO metadata for return policy page */}
+      <ArticleSEO 
+        title="Return Policy | Rare Collectables"
+        description="Learn about Rare Collectables' return policy, including eligibility, process, shipping costs, and refund information for jewelry purchases."
+        path="/return-policy"
+        publishedDate="2023-01-15"
+        modifiedDate="2023-06-20"
+      />
+      <ScrollView contentContainerStyle={styles.container} accessibilityLabel="Return Policy Page">
+      {/* Add breadcrumbs for navigation and SEO */}
+      <Breadcrumbs
+        items={[{ label: 'Home', path: '/' }]}
+        currentPageLabel="Return Policy"
+      />
       <Pressable
         onPress={() => {
           if (router.canGoBack && router.canGoBack()) {
@@ -60,6 +76,7 @@ export default function ReturnPolicyScreen() {
         Thank you for shopping with Rare Collectables. We appreciate your business and are committed to providing you with exceptional jewelry and customer service.
       </Text>
     </ScrollView>
+    </>
   );
 }
 

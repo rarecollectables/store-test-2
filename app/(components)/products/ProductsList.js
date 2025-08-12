@@ -8,6 +8,7 @@ import ProductCard from './ProductCard';
 import { colors, spacing, borderRadius, fontFamily, shadows } from '../../../theme';
 import TagBanner from '../../../app/components/TagBanner';
 import TagRecommendations from '../../../app/components/TagRecommendations';
+import { fuzzySearchProducts, generateAlternativeTerms } from '../../../lib/fuzzySearch';
 
 const MOBILE_BREAKPOINT = 768;
 const TABLET_BREAKPOINT = 1024;
@@ -333,10 +334,45 @@ export default function ProductsList({ onAddToCartSuccess }) {
           console.log('No category filter applied - showing all products');
         }
         
-        // Apply search filter if needed
+        // Apply search filter if needed - now with expanded search terms for better matching
         if (search.trim() !== '') {
           const lowerSearch = search.trim().toLowerCase();
-          query = query.or(`name.ilike.%${lowerSearch}%,description.ilike.%${lowerSearch}%`);
+          
+          // Generate alternative search terms for better matching
+          const searchTerms = generateAlternativeTerms(lowerSearch);
+          
+          // Build a complex OR query with all search terms
+          let searchConditions = [];
+          
+          // Add the original search term with standard ILIKE matching
+          searchConditions.push(`name.ilike.%${lowerSearch}%`);
+          searchConditions.push(`description.ilike.%${lowerSearch}%`);
+          
+          // For multi-word queries, also search for each word individually
+          // This is critical for queries like "Gold Heart" matching "18K Gold Plated Heart Pendant"
+          const words = lowerSearch.split(/\s+/).filter(word => word.length > 2);
+          if (words.length > 1) {
+            console.log('Multi-word search detected:', words);
+            // Add individual word conditions
+            for (const word of words) {
+              searchConditions.push(`name.ilike.%${word}%`);
+            }
+          }
+          
+          // Add alternative terms for broader matching
+          // Limit to first 3 alternatives to avoid overly complex queries
+          const limitedTerms = searchTerms.slice(0, 3);
+          for (const term of limitedTerms) {
+            if (term !== lowerSearch) { // Skip the original term which is already included
+              searchConditions.push(`name.ilike.%${term}%`);
+              searchConditions.push(`description.ilike.%${term}%`);
+            }
+          }
+          
+          // Join all conditions with OR
+          query = query.or(searchConditions.join(','));
+          
+          console.log('Expanded search with terms:', searchTerms);
         }
 
         // Apply tag filter if provided using PostgreSQL array operations
@@ -383,8 +419,46 @@ export default function ProductsList({ onAddToCartSuccess }) {
 
         console.log(`Query returned ${data.length} products`);
         
-        // Sort by price in JavaScript if needed
+        // Apply client-side fuzzy search for better results
         let processedData = [...data];
+        
+        // If search is active, apply fuzzy search to improve results
+        if (search.trim() !== '') {
+          console.log('Applying fuzzy search for:', search.trim());
+          // Lower threshold for multi-word queries to ensure we get results
+          const isMultiWord = search.trim().split(/\s+/).length > 1;
+          const threshold = isMultiWord ? 0.1 : 0.2;
+          
+          processedData = fuzzySearchProducts(processedData, search.trim(), threshold);
+          console.log(`Fuzzy search returned ${processedData.length} products`);
+          
+          // If no results and this is a multi-word query, try a more aggressive approach
+          if (processedData.length === 0 && isMultiWord) {
+            console.log('No results with multi-word query, trying individual words');
+            // Try searching with just the individual words
+            const words = search.trim().split(/\s+/).filter(word => word.length > 2);
+            let combinedResults = [];
+            
+            for (const word of words) {
+              const wordResults = fuzzySearchProducts(data, word, 0.3);
+              combinedResults = [...combinedResults, ...wordResults];
+            }
+            
+            // Remove duplicates and sort by relevance
+            const uniqueIds = new Set();
+            processedData = combinedResults
+              .filter(product => {
+                if (uniqueIds.has(product.id)) return false;
+                uniqueIds.add(product.id);
+                return true;
+              })
+              .sort((a, b) => b.relevanceScore - a.relevanceScore);
+              
+            console.log(`Individual word search returned ${processedData.length} products`);
+          }
+        }
+        
+        // Sort by price in JavaScript if needed
         if (sortInJs) {
           processedData = processedData.sort((a, b) => {
             // Extract numeric price values
@@ -454,14 +528,15 @@ export default function ProductsList({ onAddToCartSuccess }) {
           }
         }).filter(Boolean); // Remove null products
 
-        // Filter by search
-        if (search.trim() !== '') {
-          const lowerSearch = search.trim().toLowerCase();
-          validProducts = validProducts.filter(product =>
-            product.name.toLowerCase().includes(lowerSearch) ||
-            (product.description && product.description.toLowerCase().includes(lowerSearch))
-          );
-        }
+        // Skip redundant search filtering here since we already applied fuzzy search above
+        // This was causing the fuzzy search results to be filtered out, breaking the search functionality
+        // if (search.trim() !== '') {
+        //   const lowerSearch = search.trim().toLowerCase();
+        //   validProducts = validProducts.filter(product =>
+        //     product.name.toLowerCase().includes(lowerSearch) ||
+        //     (product.description && product.description.toLowerCase().includes(lowerSearch))
+        //   );
+        // }
         
         // Apply tag filter if provided (client-side fallback)
         if (tagParam && validProducts.length > 0) {

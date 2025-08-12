@@ -19,6 +19,8 @@ import CollapsibleSection from '../components/CollapsibleSection';
 import ZoomableImage from '../components/ZoomableImage';
 import RelatedProductsSection from '../components/RelatedProductsSection';
 import ProductReviews from '../components/ProductReviews';
+import ProductStructuredData from '../../components/ProductStructuredData';
+import Breadcrumbs from '../../components/Breadcrumbs';
 
 function MemoCarouselImage({ item, style, onPress }) {
   // Check if this is a video item
@@ -29,11 +31,19 @@ function MemoCarouselImage({ item, style, onPress }) {
           <video
             src={item.uri}
             controls
-            muted
+            muted={true}
+            defaultMuted={true}
+            autoPlay={false}
             loop
             playsInline
             style={{ width: '100%', height: '100%', borderRadius: 8 }}
             poster={item.poster || undefined}
+            onVolumeChange={(e) => {
+              // Force mute if user tries to unmute
+              if (!e.target.muted) {
+                e.target.muted = true;
+              }
+            }}
           />
         </View>
       );
@@ -403,6 +413,11 @@ export default function ProductDetail() {
 
   return (
     <>
+      {/* Add structured data for product */}
+      {product && (
+        <ProductStructuredData product={product} />
+      )}
+      
       {/* Ring Size Modal */}
       {showSizeModal && product.category === 'Rings' && Array.isArray(product.size_options) && (
         <LuxuryModal visible={showSizeModal} showClose={true} animation="fade" onRequestClose={() => setShowSizeModal(false)}>
@@ -480,6 +495,16 @@ export default function ProductDetail() {
         </View>
       </Pressable>
       <ScrollView>
+        {/* Add breadcrumbs for navigation and SEO */}
+        {product && (
+          <Breadcrumbs
+            items={[
+              { label: 'Shop', path: '/shop' },
+              product.category ? { label: product.category, path: `/shop?tag=${encodeURIComponent(product.category)}` } : null
+            ].filter(Boolean)}
+            currentPageLabel={product.title}
+          />
+        )}
         <View style={{ ...styles.container, ...desktopContainer, marginBottom: 8 }}>
           {/* --- Product Media Section --- */}
           <View style={{ ...styles.imageWrapper, ...desktopImageWrapper }}>

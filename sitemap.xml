@@ -2,86 +2,152 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://rarecollectables.co.uk/</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>daily</changefreq>
     <priority>1</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/shop</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/shop?category=Bracelets</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/shop?category=Earrings</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/shop?category=Necklaces</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/shop?category=Rings</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/product/1-bracelets</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/product/1-earrings</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/product/1-necklaces</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/product/1-rings</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/product/2-bracelets</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/product/2-earrings</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/product/2-necklaces</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/product/2-rings</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/product/3-bracelets</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/product/3-earrings</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/product/3-necklaces</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/product/3-rings</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/product/4-bracelets</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/product/4-necklaces</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://rarecollectables.co.uk/product/4-rings</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/contact</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/privacy-policy</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/terms-of-service</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://rarecollectables.co.uk/return-policy</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
   </url>
 </urlset>
