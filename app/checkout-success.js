@@ -157,10 +157,16 @@ export default function CheckoutSuccess() {
                   // Track purchase event for analytics
                   console.log('Tracking purchase event for analytics');
                   try {
-                    // Try direct dataLayer push as a backup method
-                    if (typeof window !== 'undefined' && window.dataLayer) {
-                      console.log('Pushing directly to dataLayer');
-                      window.dataLayer.push({
+                    // Check if GTM is loaded and push to dataLayer with debug logging
+                    if (typeof window !== 'undefined') {
+                      // Initialize dataLayer if it doesn't exist
+                      window.dataLayer = window.dataLayer || [];
+                      
+                      console.log('GTM status:', window.google_tag_manager ? 'loaded' : 'not loaded');
+                      console.log('dataLayer before push:', JSON.stringify(window.dataLayer));
+                      
+                      // Create purchase event data
+                      const purchaseData = {
                         'event': 'purchase',
                         'ecommerce': {
                           'transaction_id': orderNumber,
@@ -173,7 +179,26 @@ export default function CheckoutSuccess() {
                             'quantity': item.quantity
                           }))
                         }
-                      });
+                      };
+                      
+                      // Push to dataLayer
+                      console.log('Pushing purchase event to dataLayer:', JSON.stringify(purchaseData));
+                      window.dataLayer.push(purchaseData);
+                      
+                      // Clear previous ecommerce object to prevent data leakage
+                      window.dataLayer.push({ ecommerce: null });
+                      
+                      console.log('dataLayer after push:', JSON.stringify(window.dataLayer));
+                      
+                      // Verify if GTM received the event
+                      setTimeout(() => {
+                        console.log('Checking if purchase event was processed by GTM...');
+                        if (window.google_tag_manager) {
+                          console.log('GTM is available, event should have been processed');
+                        } else {
+                          console.warn('GTM still not loaded after purchase event push');
+                        }
+                      }, 1000);
                     }
                     
                     // Use our trackEvent function
@@ -250,13 +275,8 @@ export default function CheckoutSuccess() {
                     // Don't block the checkout process for email errors
                   }
                   
-                  // Track purchase event
-                  await trackEvent({
-                    eventType: 'purchase',
-                    items: cart,
-                    value: total,
-                    transaction_id: orderData.id
-                  });
+                  // No need for duplicate tracking - already tracked above
+                  console.log('Purchase event already tracked, skipping duplicate trackEvent call');
                   
                   // Clear cart data
                   localStorage.removeItem('cartData');
