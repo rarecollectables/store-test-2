@@ -913,41 +913,9 @@ export default function CheckoutScreen() {
           status: 'pending',
         };
 
-        await storeOrder(orderData, contact.email);
-
-        // 6. Optional: send confirmation email
-        try {
-          const emailResponse = await fetch(
-            '/.netlify/functions/sendConfirmationEmail',
-            {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({
-                to: contact.email,
-                order: {
-                  order_number: orderNumber,
-                  amount: total * 100,
-                  quantity: cart.reduce((sum, item) => sum + item.quantity, 0),
-                  created_at: orderDate.toISOString(),
-                  shipping_address: address,
-                  product_image: cart[0]?.image_url || null,
-                },
-              }),
-            },
-          );
-
-          if (!emailResponse.ok) {
-            console.warn(
-              'Confirmation email failed:',
-              await emailResponse.text(),
-            );
-          } else {
-            console.log('Confirmation email sent');
-          }
-        } catch (err) {
-          console.warn('Email sending failed', err);
-        }
-
+        // Don't store order yet - this will happen after payment is confirmed
+        console.log('Redirecting to Stripe checkout page. Order will be stored after payment confirmation.');
+        
         // 7. Redirect to Stripe-hosted checkout
         window.location.href = data.url;
         // handleCheckoutSuccess()

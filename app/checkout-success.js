@@ -84,7 +84,7 @@ export default function CheckoutSuccess() {
                   // Send order confirmation email
                   try {
                     console.log('Sending order confirmation email to:', email);
-                    const emailResponse = await fetch('/.netlify/functions/send-order-confirmation', {
+                    const emailResponse = await fetch('/.netlify/functions/sendConfirmationEmail', {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',

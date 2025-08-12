@@ -173,4 +173,4 @@ Rare Collectables Team`,
   }
 }
 
-module.exports = { handler };
+// Handler is already exported at the top using exports.handler
