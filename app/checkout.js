@@ -1891,12 +1891,6 @@ export default function CheckoutScreen() {
                   source={require('../assets/images/klarna-logo.png')}
                   style={[styles.paymentMethodIcon, {width: 40}]}
                   resizeMode="contain"
-                  defaultSource={require('../assets/images/klarna-logo.png')}
-                  fallback={
-                    <Text style={{color: colors.gold, fontWeight: 'bold'}}>
-                      Klarna
-                    </Text>
-                  }
                 />
               </Pressable>
 
@@ -1922,12 +1916,6 @@ export default function CheckoutScreen() {
                   source={require('../assets/images/clearpay-logo.png')}
                   style={[styles.paymentMethodIcon, {width: 40}]}
                   resizeMode="contain"
-                  defaultSource={require('../assets/images/clearpay-logo.png')}
-                  fallback={
-                    <Text style={{color: colors.gold, fontWeight: 'bold'}}>
-                      Clearpay
-                    </Text>
-                  }
                 />
               </Pressable>
             </View>

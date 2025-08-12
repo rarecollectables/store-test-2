@@ -173,4 +173,4 @@ Rare Collectables Team`,
   }
 }
 
-module.exports = sendConfirmationEmail;
+module.exports = { handler };

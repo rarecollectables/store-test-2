@@ -81,6 +81,31 @@ export default function CheckoutSuccess() {
                   // Store the order in both localStorage and database
                   await storeOrder(orderData, email);
                   
+                  // Send order confirmation email
+                  try {
+                    console.log('Sending order confirmation email to:', email);
+                    const emailResponse = await fetch('/.netlify/functions/send-order-confirmation', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        email: email,
+                        order: orderData
+                      })
+                    });
+                    
+                    const emailResult = await emailResponse.json();
+                    console.log('Email sending result:', emailResult);
+                    
+                    if (!emailResponse.ok) {
+                      console.error('Failed to send order confirmation email:', emailResult);
+                    }
+                  } catch (emailError) {
+                    console.error('Error sending order confirmation email:', emailError);
+                    // Don't block the checkout process for email errors
+                  }
+                  
                   // Track purchase event
                   await trackEvent({
                     eventType: 'purchase',
