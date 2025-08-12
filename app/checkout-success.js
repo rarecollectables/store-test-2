@@ -125,6 +125,58 @@ export default function CheckoutSuccess() {
               console.log('Attempting to retrieve cart data from localStorage');
               const cartData = localStorage.getItem('cartData');
               console.log('Cart data retrieved from localStorage:', cartData ? 'Found' : 'Not found');
+              
+              // Always track the purchase event, even if cart data is missing
+              // This ensures GTM receives the purchase event
+              console.log('Tracking purchase event regardless of cart data');
+              
+              // Initialize dataLayer if it doesn't exist
+              if (typeof window !== 'undefined') {
+                window.dataLayer = window.dataLayer || [];
+                console.log('GTM status:', window.google_tag_manager ? 'loaded' : 'not loaded');
+              }
+              
+              // Create minimal purchase event data from session
+              if (sessionData && sessionData.session) {
+                const orderDate = new Date();
+                const orderNumber = `ORD-${orderDate.getFullYear()}${String(orderDate.getMonth() + 1).padStart(2, '0')}${String(orderDate.getDate()).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+                
+                // Get amount from session
+                const amount = sessionData.session.amount_total / 100; // Convert from cents
+                
+                console.log('Creating purchase event from session data with amount:', amount);
+                
+                // Push to dataLayer directly
+                if (typeof window !== 'undefined' && window.dataLayer) {
+                  const purchaseData = {
+                    'event': 'purchase',
+                    'ecommerce': {
+                      'transaction_id': orderNumber,
+                      'value': amount,
+                      'currency': 'GBP'
+                    }
+                  };
+                  
+                  console.log('Pushing purchase event to dataLayer:', JSON.stringify(purchaseData));
+                  window.dataLayer.push({ ecommerce: null }); // Clear previous ecommerce object
+                  window.dataLayer.push(purchaseData);
+                  
+                  // Also use trackEvent function
+                  try {
+                    trackEvent({
+                      eventType: 'purchase',
+                      value: amount,
+                      currency: 'GBP',
+                      transaction_id: orderNumber
+                    });
+                    console.log('trackEvent function called successfully');
+                  } catch (trackErr) {
+                    console.error('Error tracking purchase event:', trackErr);
+                  }
+                }
+              }
+              
+              // Process cart data if available
               if (cartData) {
                 const { cart, contact, address, total } = JSON.parse(cartData);
                 console.log('Cart data parsed successfully:', { 
@@ -154,8 +206,8 @@ export default function CheckoutSuccess() {
                   };
                   console.log('Order data created:', JSON.stringify(orderData, null, 2));
                   
-                  // Track purchase event for analytics
-                  console.log('Tracking purchase event for analytics');
+                  // Track purchase event with detailed cart data
+                  console.log('Tracking detailed purchase event with cart items');
                   try {
                     // Check if GTM is loaded and push to dataLayer with debug logging
                     if (typeof window !== 'undefined') {
@@ -165,7 +217,10 @@ export default function CheckoutSuccess() {
                       console.log('GTM status:', window.google_tag_manager ? 'loaded' : 'not loaded');
                       console.log('dataLayer before push:', JSON.stringify(window.dataLayer));
                       
-                      // Create purchase event data
+                      // Clear previous ecommerce object to prevent data leakage
+                      window.dataLayer.push({ ecommerce: null });
+                      
+                      // Create purchase event data with cart items
                       const purchaseData = {
                         'event': 'purchase',
                         'ecommerce': {
@@ -182,11 +237,8 @@ export default function CheckoutSuccess() {
                       };
                       
                       // Push to dataLayer
-                      console.log('Pushing purchase event to dataLayer:', JSON.stringify(purchaseData));
+                      console.log('Pushing detailed purchase event to dataLayer:', JSON.stringify(purchaseData));
                       window.dataLayer.push(purchaseData);
-                      
-                      // Clear previous ecommerce object to prevent data leakage
-                      window.dataLayer.push({ ecommerce: null });
                       
                       console.log('dataLayer after push:', JSON.stringify(window.dataLayer));
                       

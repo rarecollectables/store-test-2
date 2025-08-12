@@ -217,7 +217,11 @@ const [selectedCategory, setSelectedCategory] = useState('Best Sellers');
   const isDesktop = width >= 1024;
 
   useEffect(() => {
-    // Always show the promo bubble on every load
+    // Disable welcome popup and discount bubble for new customers
+    setShowPromo(false);
+    
+    // If you want to re-enable this in the future, uncomment the code below:
+    /*
     const seen = typeof window !== 'undefined' && window.localStorage && window.localStorage.getItem('springPromoSeen');
     if (!seen) {
       setShowPromo(true);
@@ -225,6 +229,7 @@ const [selectedCategory, setSelectedCategory] = useState('Best Sellers');
     } else {
       setShowDiscountBubble(true);
     }
+    */
 
     // Scroll to #bestsellers if hash is present
     if (typeof window !== 'undefined') {

@@ -1,8 +1,9 @@
 import { Tabs, useRouter, usePathname } from 'expo-router';
 import { FontAwesome } from '@expo/vector-icons';
-import { Pressable, View, Text, Animated } from 'react-native';
+import { HomeOutlineIcon, ShoppingBagOutlineIcon } from '../components/SvgIcon';
+import { Pressable, View, Text, Animated, Platform } from 'react-native';
 import { useStore } from '../../context/store';
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { trackEvent } from '../../lib/trackEvent';
 
@@ -44,7 +45,7 @@ function GoldShimmer({ children, shimmer }) {
   );
 }
 
-function TabBarIconWithBadge({ name, color, count, animate }) {
+function TabBarIconWithBadge({ name, color, count, animate, size = 24, style, svgIcon }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (animate) {
@@ -57,7 +58,11 @@ function TabBarIconWithBadge({ name, color, count, animate }) {
   return (
     <GoldShimmer shimmer={animate}>
       <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-        <FontAwesome name={name} size={24} color={color} />
+        {svgIcon ? (
+          React.cloneElement(svgIcon, { color, size })
+        ) : (
+          <FontAwesome name={name} size={size} color={color} style={style} />
+        )}
         {count > 0 && (
           <View style={{
             position: 'absolute',
@@ -85,14 +90,55 @@ export default function TabsLayout() {
   const { cart = [], wishlist = [], lastAddedToCart, lastAddedToWishlist, setLastVisitedRoute } = useStore();
   const cartCount = Array.isArray(cart) ? cart.length : 0;
   const wishlistCount = Array.isArray(wishlist) ? wishlist.length : 0;
+  
+  // Add CSS to hide bottom navigation on desktop
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const style = document.createElement('style');
+      style.id = 'hide-bottom-nav-desktop';
+      style.innerHTML = `
+        @media (min-width: 768px) {
+          nav {
+            display: none !important;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+      
+      return () => {
+        const existingStyle = document.getElementById('hide-bottom-nav-desktop');
+        if (existingStyle) {
+          existingStyle.remove();
+        }
+      };
+    }
+  }, []);
+
+  // Create a style for the tab bar to hide on desktop
+  const tabBarStyle = Platform.OS === 'web' ? {
+    tabBarStyle: {
+      '@media (min-width: 768px)': {
+        display: 'none',
+      },
+    }
+  } : {};
 
   return (
-    <Tabs screenOptions={{ headerShown: false }}>
+    <Tabs 
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: Platform.OS === 'web' ? {
+          // This will be hidden via CSS for desktop
+          // Adding a data attribute to make it easier to target with CSS
+          ['data-mobile-nav']: 'true',
+        } : undefined
+      }}>
+      
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <FontAwesome name="home" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <HomeOutlineIcon size={24} color={color} />,
           tabBarButton: (props) => (
             <Pressable
               {...props}
@@ -114,7 +160,7 @@ export default function TabsLayout() {
         name="shop"
         options={{
           title: 'Shop',
-          tabBarIcon: ({ color }) => <FontAwesome name="shopping-bag" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <ShoppingBagOutlineIcon size={24} color={color} />,
           tabBarButton: (props) => (
             <Pressable
               {...props}
@@ -137,7 +183,7 @@ export default function TabsLayout() {
         options={{
           title: 'Wishlist',
           tabBarIcon: ({ color }) => (
-            <TabBarIconWithBadge name="heart" color={color} count={wishlistCount} animate={!!lastAddedToWishlist} />
+            <TabBarIconWithBadge name="heart-o" color={color} count={wishlistCount} animate={!!lastAddedToWishlist} />
           ),
           tabBarButton: (props) => (
             <Pressable
@@ -160,7 +206,7 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <FontAwesome name="user" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <FontAwesome name="user-o" size={24} color={color} />,
           tabBarButton: (props) => (
             <Pressable
               {...props}
@@ -181,9 +227,9 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="cart"
         options={{
-          title: 'Cart',
+          title: 'Bag',
           tabBarIcon: ({ color }) => (
-            <TabBarIconWithBadge name="shopping-bag" color={color} count={cartCount} animate={!!lastAddedToCart} />
+            <TabBarIconWithBadge svgIcon={<ShoppingBagOutlineIcon />} color={color} count={cartCount} animate={!!lastAddedToCart} />
           ),
           tabBarButton: (props) => (
             <Pressable

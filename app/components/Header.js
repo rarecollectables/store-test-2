@@ -754,7 +754,7 @@ export default function Header({transparent = false}) {
             <Pressable
               style={styles.iconButton}
               onPress={() => handleNavigation('/(tabs)/wishlist')}>
-              <FontAwesome name="heart" size={22} color={colors.gold} />
+              <FontAwesome name="heart-o" size={22} color={colors.gold} />
               {wishlistCount > 0 && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{wishlistCount}</Text>
