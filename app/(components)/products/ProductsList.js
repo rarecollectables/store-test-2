@@ -251,6 +251,20 @@ export default function ProductsList({ onAddToCartSuccess }) {
           countQuery = countQuery.or(`name.ilike.%${lowerSearch}%,description.ilike.%${lowerSearch}%`);
         }
         
+        // Apply tag filter to count query if provided
+        if (tagParam) {
+          console.log('Applying tag filter to count query:', tagParam);
+          const normalizedTag = tagParam.toLowerCase().trim();
+          countQuery = countQuery.contains('tags', [normalizedTag]);
+        }
+        
+        // Apply multiple tags filter to count query if provided
+        if (tagsParam && Array.isArray(tagsParam)) {
+          console.log('Applying multiple tags filter to count query:', tagsParam);
+          const normalizedTags = tagsParam.map(tag => tag.toLowerCase().trim());
+          countQuery = countQuery.overlaps('tags', normalizedTags);
+        }
+        
         const { count, error: countError } = await countQuery;
         
         if (countError) {
@@ -266,7 +280,7 @@ export default function ProductsList({ onAddToCartSuccess }) {
         // Build the main query
         let query = supabase
           .from('products')
-          .select('id, name, price, image_url, category, description, stock, additional_images');
+          .select('id, name, price, image_url, category, description, stock, additional_images, tags');
           
         // Apply sorting
         console.log('Applying sort:', sortOption);

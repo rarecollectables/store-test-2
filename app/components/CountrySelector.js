@@ -172,19 +172,12 @@ export default function CountrySelector({
         accessibilityRole="button"
       >
         <View style={styles.buttonContent}>
-          <View style={styles.flagContainer}>
-            <Text style={[styles.flag, compact && styles.flagCompact]}>
-              {currentCountry.flag}
-            </Text>
-          </View>
-          <View style={styles.textContainer}>
-            <Text style={[styles.countryText, compact && styles.countryTextCompact]}>
-              {currentCountry.currency}
-            </Text>
-          </View>
+          <Text style={styles.flag}>
+            {currentCountry.flag}
+          </Text>
           <FontAwesome 
             name="chevron-down" 
-            size={compact ? 12 : 14} 
+            size={12} 
             color="#BFA054" 
             style={styles.chevron}
           />
@@ -289,20 +282,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-  },
-  flagContainer: {
-    marginRight: 4,
+    minWidth: 40,
+    gap: 4,
   },
   flag: {
-    fontSize: 16,
+    fontSize: 20,
+    lineHeight: 24,
   },
   flagCompact: {
     fontSize: 14,
-  },
-  textContainer: {
-    flex: 0,
-    marginRight: 2,
   },
   countryText: {
     fontSize: 12,
@@ -319,7 +307,7 @@ const styles = StyleSheet.create({
     display: 'none',
   },
   chevron: {
-    marginLeft: spacing.small,
+    marginLeft: 0,
   },
   chevronRotated: {
     transform: [{ rotate: '180deg' }],

@@ -632,6 +632,15 @@ export default function ProductCard({item, cardWidth, disableImageCycling}) {
             </Text>
           </View>
         )}
+        {item.tags && item.tags.some(tag => 
+          typeof tag === 'string' && tag.toLowerCase() === 'personalised'
+        ) && (
+          <View style={[styles.discountBadge, styles.personaliseBadge]}>
+            <Text style={[styles.discountText, styles.personaliseText]}>
+              Personalise
+            </Text>
+          </View>
+        )}
         {imageLoading && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.gold} />
@@ -728,6 +737,17 @@ const styles = StyleSheet.create({
   discountText: {
     color: 'white',
     fontSize: 12,
+    fontWeight: 'bold',
+  },
+  personaliseBadge: {
+    backgroundColor: '#bfa46d', // Match discount badge color
+    top: 8,
+    right: 8, // Position on the right side to avoid overlap with discount badge
+    left: 'auto',
+  },
+  personaliseText: {
+    color: 'white',
+    fontSize: 11,
     fontWeight: 'bold',
   },
   contentContainer: {

@@ -21,6 +21,7 @@ import ProductReviews from '../components/ProductReviews';
 import ProductStructuredData from '../../components/ProductStructuredData';
 import Breadcrumbs from '../../components/Breadcrumbs';
 import CollapsibleSection from '../components/CollapsibleSection';
+import ProductCustomization from '../components/ProductCustomization';
 
 function MemoCarouselImage({ item, style, onPress }) {
   // Check if this is a video item
@@ -102,16 +103,85 @@ export default function ProductDetail() {
   const flatListRef = useRef(null);
   const addCartAnim = useRef(new Animated.Value(1));
   const { addToCart, addToWishlist, cart } = useStore();
-  // --- Ring size state ---
-  const [selectedSize, setSelectedSize] = useState('');
-  const [showSizeModal, setShowSizeModal] = useState(false); // New state for ring size modal
-  const [pendingAddToCart, setPendingAddToCart] = useState(false); // To track if add to cart is waiting for size selection
+  // Product state
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
+  // --- Ring size state ---
+  const [selectedSize, setSelectedSize] = useState('');
+  const [showSizeModal, setShowSizeModal] = useState(false); // New state for ring size modal
+  const [showSizeGuide, setShowSizeGuide] = useState(false); // State for ring size guide modal
+  const [pendingAddToCart, setPendingAddToCart] = useState(false); // To track if add to cart is waiting for size selection
+  const [isRingProduct, setIsRingProduct] = useState(false);
+  
+  // Default ring size options if none provided
+  const DEFAULT_RING_SIZES = ['J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+  
+  // UK Ring Size Guide data
+  const RING_SIZE_GUIDE = [
+    { uk: 'J', us: '4.5', diameter: '14.9mm', circumference: '46.8mm' },
+    { uk: 'J½', us: '4.75', diameter: '15.1mm', circumference: '47.4mm' },
+    { uk: 'K', us: '5', diameter: '15.3mm', circumference: '48.0mm' },
+    { uk: 'K½', us: '5.25', diameter: '15.5mm', circumference: '48.7mm' },
+    { uk: 'L', us: '5.5', diameter: '15.7mm', circumference: '49.3mm' },
+    { uk: 'L½', us: '5.75', diameter: '15.9mm', circumference: '49.9mm' },
+    { uk: 'M', us: '6', diameter: '16.1mm', circumference: '50.6mm' },
+    { uk: 'M½', us: '6.25', diameter: '16.3mm', circumference: '51.2mm' },
+    { uk: 'N', us: '6.5', diameter: '16.5mm', circumference: '51.9mm' },
+    { uk: 'N½', us: '6.75', diameter: '16.8mm', circumference: '52.5mm' },
+    { uk: 'O', us: '7', diameter: '17.0mm', circumference: '53.1mm' },
+    { uk: 'P', us: '7.5', diameter: '17.4mm', circumference: '54.4mm' },
+    { uk: 'Q', us: '8', diameter: '17.8mm', circumference: '55.7mm' },
+    { uk: 'R', us: '8.5', diameter: '18.1mm', circumference: '56.9mm' },
+    { uk: 'S', us: '9', diameter: '18.5mm', circumference: '58.1mm' },
+    { uk: 'T', us: '9.5', diameter: '18.9mm', circumference: '59.3mm' },
+    { uk: 'U', us: '10', diameter: '19.3mm', circumference: '60.6mm' },
+    { uk: 'V', us: '10.5', diameter: '19.7mm', circumference: '61.8mm' },
+    { uk: 'W', us: '11', diameter: '20.1mm', circumference: '63.0mm' },
+    { uk: 'X', us: '11.5', diameter: '20.5mm', circumference: '64.2mm' },
+    { uk: 'Y', us: '12', diameter: '20.8mm', circumference: '65.4mm' },
+    { uk: 'Z', us: '12.5', diameter: '21.2mm', circumference: '66.6mm' },
+    { uk: 'Z+1', us: '13', diameter: '21.6mm', circumference: '67.9mm' },
+    { uk: 'Z+2', us: '13.5', diameter: '22.0mm', circumference: '69.1mm' },
+  ];
+  
+  // Check if product is a ring (by category or tag) when product changes
+  useEffect(() => {
+    if (product) {
+      // Enhanced debug logs
+      console.log('--- Ring Detection Debug ---');
+      console.log('Product ID:', product.id);
+      console.log('Product title:', product.title);
+      console.log('Product category:', product.category);
+      console.log('Product tags:', product.tags);
+      
+      const hasRingTag = Array.isArray(product.tags) && 
+        product.tags.some(tag => {
+          const tagStr = String(tag).toLowerCase();
+          const isMatch = tagStr.includes('ring');
+          if (isMatch) {
+            console.log(`Found matching tag: ${tag} (${typeof tag})`);
+          }
+          return isMatch;
+        });
+      
+      const isRing = product.category === 'Rings' || hasRingTag;
+      
+      console.log('Has ring tag:', hasRingTag);
+      console.log('Is ring product:', isRing);
+      console.log('Has size options:', Array.isArray(product.size_options) ? product.size_options.length : 'none');
+      console.log('---------------------------');
+      
+      setIsRingProduct(isRing);
+    }
+  }, [product]);
+  
   // Gift box selection
   const [selectedGiftBox, setSelectedGiftBox] = useState(null);
+  
+  // Product customization state
+  const [customization, setCustomization] = useState({});
   
   // Gift box options
   const giftBoxOptions = [
@@ -297,8 +367,14 @@ export default function ProductDetail() {
   // }, [images.length]);
 
   function handleAddToCart(currentQuantity) {
-    // For rings, require a size selection
-    if (product.category === 'Rings' && Array.isArray(product.size_options) && product.size_options.length > 0 && !selectedSize) {
+    // Check if product is a ring (by category or tag) and has size options
+    const isRingProduct = (product.category === 'Rings' || 
+                         (product.tags && product.tags.some(tag => tag.toLowerCase() === 'ring'))) && 
+                        Array.isArray(product.size_options) && 
+                        product.size_options.length > 0;
+    
+    // If it's a ring product and no size is selected, show size modal
+    if (isRingProduct && !selectedSize) {
       setShowSizeModal(true);
       setPendingAddToCart(true);
       return;
@@ -306,6 +382,11 @@ export default function ProductDetail() {
     
     // Include gift box selection in cart metadata if selected
     const giftBoxMetadata = selectedGiftBox ? { giftBox: selectedGiftBox } : {};
+    
+    // Include customization data if any
+    const hasCustomization = Object.keys(customization).some(key => customization[key]?.trim());
+    const customizationMetadata = hasCustomization ? { customization } : {};
+    
     Animated.sequence([
     Animated.timing(addCartAnim.current, { toValue: 1.15, duration: 120, useNativeDriver: true }),
     Animated.spring(addCartAnim.current, { toValue: 1, friction: 3, useNativeDriver: true })
@@ -317,19 +398,27 @@ export default function ProductDetail() {
 
   addToCart({
     ...product,
-    selectedSize: product.category === 'Rings' ? selectedSize : undefined,
+    selectedSize: (product.category === 'Rings' || 
+                  (product.tags && product.tags.some(tag => tag.toLowerCase() === 'ring'))) ? 
+                 selectedSize : undefined,
     price: typeof product.price === 'number'
       ? product.price
       : parseFloat(String(product.price).replace(/[£\s]/g, '')) || 0,
     image: imageUri,
     quantity: newQuantity,
     ...giftBoxMetadata,
+    ...customizationMetadata,
   });
   trackEvent({
     eventType: 'add_to_cart',
     productId: product?.id,
     quantity: newQuantity,
-    metadata: { productName: product?.title || product?.name, price: product?.price, selectedSize: product.category === 'Rings' ? selectedSize : undefined }
+    metadata: { 
+      productName: product?.title || product?.name, 
+      price: product?.price, 
+      selectedSize: product.category === 'Rings' ? selectedSize : undefined,
+      customization: hasCustomization ? customization : undefined
+    }
   });
   setCartModalVisible(true);
 }
@@ -438,7 +527,7 @@ export default function ProductDetail() {
       )}
       
       {/* Ring Size Modal */}
-      {showSizeModal && product.category === 'Rings' && Array.isArray(product.size_options) && (
+      {showSizeModal && isRingProduct && Array.isArray(product.size_options) && (
         <LuxuryModal visible={showSizeModal} showClose={true} animation="fade" onRequestClose={() => setShowSizeModal(false)}>
           <View style={{ alignItems: 'center', justifyContent: 'center', padding: 28 }}>
             <Text style={{ color: colors.gold, fontSize: 22, fontWeight: 'bold', marginBottom: 16, fontFamily, textAlign: 'center' }}>
@@ -447,17 +536,28 @@ export default function ProductDetail() {
             <Text style={{ color: colors.platinum, fontSize: 16, marginBottom: 18, fontFamily, textAlign: 'center', maxWidth: 340 }}>
               Please choose a ring size to add this item to your cart.
             </Text>
-            <View style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, minWidth: 36, alignItems: 'center', backgroundColor: '#fff', marginBottom: 18 }}>
-              <select
-                value={selectedSize}
-                onChange={e => setSelectedSize(e.target.value)}
-                style={{ fontSize: 15, border: 'none', background: 'transparent', outline: 'none' }}
+            <View style={{ width: '100%', marginBottom: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 8, minWidth: 120, backgroundColor: '#fff', marginRight: 12 }}>
+                <select
+                  value={selectedSize}
+                  onChange={e => setSelectedSize(e.target.value)}
+                  style={{ fontSize: 16, border: 'none', background: 'transparent', outline: 'none', width: '100%' }}
+                >
+                  <option value="">Select UK size...</option>
+                  {product.size_options.map(size => (
+                    <option key={size} value={size}>UK {size}</option>
+                  ))}
+                </select>
+              </View>
+              <Pressable 
+                onPress={() => {
+                  setShowSizeModal(false);
+                  setShowSizeGuide(true);
+                }}
+                style={{ padding: 4 }}
               >
-                <option value="">Select</option>
-                {product.size_options.map(size => (
-                  <option key={size} value={size}>{size}</option>
-                ))}
-              </select>
+                <Text style={{ color: colors.gold, fontSize: 14, textDecorationLine: 'underline' }}>Size Guide</Text>
+              </Pressable>
             </View>
             <Pressable
               style={{ backgroundColor: colors.gold, borderRadius: borderRadius.md, paddingVertical: 12, paddingHorizontal: 36, marginTop: 8 }}
@@ -487,6 +587,104 @@ export default function ProductDetail() {
           </View>
         </LuxuryModal>
       )}
+
+      {/* Ring Size Guide Modal */}
+      <LuxuryModal 
+        visible={showSizeGuide} 
+        showClose={true} 
+        animation="fade" 
+        onRequestClose={() => {
+          setShowSizeGuide(false);
+          if (showSizeModal) {
+            // If we came from the size selection modal, show it again
+            setTimeout(() => setShowSizeModal(true), 10);
+          }
+        }}
+      >
+        <View style={{ padding: 24, maxWidth: 800, maxHeight: '90vh', overflow: 'scroll' }}>
+          <Text style={{ 
+            color: colors.gold, 
+            fontSize: 22, 
+            fontWeight: 'bold', 
+            marginBottom: 16, 
+            fontFamily, 
+            textAlign: 'center' 
+          }}>
+            UK Ring Size Guide
+          </Text>
+          
+          <Text style={[styles.sectionTitle, { marginTop: 0 }]}>
+            How to Measure Your Ring Size
+          </Text>
+          <Text style={styles.paragraph}>
+            1. Cut a strip of paper about 10cm long and 5mm wide.
+          </Text>
+          <Text style={styles.paragraph}>
+            2. Wrap it around the base of your finger where the ring will sit.
+          </Text>
+          <Text style={styles.paragraph}>
+            3. Mark where the paper overlaps.
+          </Text>
+          <Text style={[styles.paragraph, { marginBottom: 24 }]}>
+            4. Measure the length in millimeters and use the chart below to find your UK ring size.
+          </Text>
+          
+          <Text style={styles.sectionTitle}>
+            UK Ring Size Chart
+          </Text>
+          <View style={styles.tableContainer}>
+            <View style={[styles.tableRow, styles.tableHeader]}>
+              <Text style={[styles.tableCell, { flex: 1.2 }]}>UK Size</Text>
+              <Text style={[styles.tableCell, { flex: 1.2 }]}>US Size</Text>
+              <Text style={[styles.tableCell, { flex: 1.5 }]}>Diameter</Text>
+              <Text style={[styles.tableCell, { flex: 2 }]}>Circumference</Text>
+            </View>
+            {RING_SIZE_GUIDE.map((size, index) => (
+              <View 
+                key={size.uk} 
+                style={[
+                  styles.tableRow,
+                  index % 2 === 0 ? styles.evenRow : styles.oddRow,
+                  selectedSize === size.uk ? styles.selectedRow : null
+                ]}
+              >
+                <Text style={[styles.tableCell, { flex: 1.2, fontWeight: selectedSize === size.uk ? 'bold' : 'normal' }]}>
+                  {size.uk}
+                </Text>
+                <Text style={[styles.tableCell, { flex: 1.2 }]}>{size.us}</Text>
+                <Text style={[styles.tableCell, { flex: 1.5 }]}>{size.diameter}</Text>
+                <Text style={[styles.tableCell, { flex: 2 }]}>{size.circumference}</Text>
+              </View>
+            ))}
+          </View>
+          
+          <Text style={styles.sectionTitle}>
+            Tips for the Perfect Fit
+          </Text>
+          <Text style={styles.paragraph}>
+            • Measure your finger at the end of the day when fingers are typically at their largest.
+          </Text>
+          <Text style={styles.paragraph}>
+            • Consider the width of the ring - wider bands may require a larger size.
+          </Text>
+          <Text style={styles.paragraph}>
+            • If your knuckle is much larger than your finger base, measure both and choose a size in between.
+          </Text>
+          
+          <Pressable 
+            style={styles.closeButton}
+            onPress={() => {
+              setShowSizeGuide(false);
+              if (showSizeModal) {
+                // If we came from the size selection modal, show it again
+                setTimeout(() => setShowSizeModal(true), 10);
+              }
+            }}
+          >
+            <Text style={styles.closeButtonText}>Close</Text>
+          </Pressable>
+        </View>
+      </LuxuryModal>
       <CartAddedModal
         visible={cartModalVisible}
         onGoToCart={() => {
@@ -713,23 +911,42 @@ export default function ProductDetail() {
               </View>
             </View>
 
+            {/* --- Product Customization Section --- */}
+            <ProductCustomization
+              product={product}
+              customization={customization}
+              onCustomizationChange={setCustomization}
+              style={{ marginBottom: 20 }}
+            />
+
             {/* --- Purchase Actions Section --- */}
             {/* On mobile, render size selector above actions; on desktop, keep inline */}
-            {width < 600 && product.category === 'Rings' && Array.isArray(product.size_options) && product.size_options.length > 0 && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={{ fontSize: 15, marginRight: 6 }}>Size</Text>
-                <View style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, minWidth: 36, alignItems: 'center', backgroundColor: '#fff' }}>
-                  <select
-                    value={selectedSize}
-                    onChange={e => setSelectedSize(e.target.value)}
-                    style={{ fontSize: 15, border: 'none', background: 'transparent', outline: 'none' }}
+            {width < 600 && isRingProduct && (
+              <View style={{ marginBottom: 12, width: '100%' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                  <Text style={{ fontSize: 15, marginRight: 6 }}>Size</Text>
+                  <View style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, minWidth: 100, alignItems: 'center', backgroundColor: '#fff' }}>
+                    <select
+                      value={selectedSize}
+                      onChange={e => setSelectedSize(e.target.value)}
+                      style={{ fontSize: 15, border: 'none', background: 'transparent', outline: 'none', width: '100%', cursor: 'pointer' }}
                   >
                     <option value="">Select</option>
                     {product.size_options.map(size => (
                       <option key={size} value={size}>{size}</option>
                     ))}
-                  </select>
+                    </select>
+                  </View>
                 </View>
+                <Pressable 
+                  onPress={() => setShowSizeGuide(true)}
+                  style={{ alignSelf: 'flex-start' }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <FontAwesome name="ruler" size={12} color={colors.gold} />
+                    <Text style={{ color: colors.gold, fontSize: 13, textDecorationLine: 'underline' }}>Size Guide</Text>
+                  </View>
+                </Pressable>
               </View>
             )}
             <View style={{
@@ -744,20 +961,36 @@ export default function ProductDetail() {
               ...desktopActionContainer
             }}>
               {/* Ring Size Selector for Rings (desktop/tablet only) */}
-              {width >= 600 && product.category === 'Rings' && Array.isArray(product.size_options) && product.size_options.length > 0 && (
+              {width >= 600 && isRingProduct && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 18, flexShrink: 1, marginBottom: 0 }}>
-                  <Text style={{ fontSize: 15, marginRight: 6 }}>Size</Text>
-                  <View style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, minWidth: 36, alignItems: 'center', backgroundColor: '#fff' }}>
-                    <select
-                      value={selectedSize}
-                      onChange={e => setSelectedSize(e.target.value)}
-                      style={{ fontSize: 15, border: 'none', background: 'transparent', outline: 'none' }}
+                  {/* <Text style={{ fontSize: 15, marginRight: 6 }}>Size</Text> */}
+                  <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      <View style={{ borderWidth: 1, borderColor: '#ddd', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, minWidth: 100, alignItems: 'center', backgroundColor: '#fff' }}>
+                        <select
+                          value={selectedSize}
+                          onChange={e => setSelectedSize(e.target.value)}
+                          style={{ fontSize: 15, border: 'none', background: 'transparent', outline: 'none', cursor: 'pointer', width: '100%' }}
+                        >
+                          <option value="">Select Size</option>
+                          {(Array.isArray(product.size_options) && product.size_options.length > 0 
+                          ? product.size_options 
+                          : DEFAULT_RING_SIZES
+                        ).map(size => (
+                          <option key={size} value={size}>UK {size}</option>
+                        ))}
+                        </select>
+                      </View>
+                    </View>
+                    <Pressable 
+                      onPress={() => setShowSizeGuide(true)}
+                      style={{ alignSelf: 'flex-start' }}
                     >
-                      <option value="">Select</option>
-                      {product.size_options.map(size => (
-                        <option key={size} value={size}>{size}</option>
-                      ))}
-                    </select>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <FontAwesome name="ruler" size={12} color={colors.gold} />
+                        <Text style={{ color: colors.gold, fontSize: 13, textDecorationLine: 'underline' }}>Size Guide</Text>
+                      </View>
+                    </Pressable>
                   </View>
                 </View>
               )}
@@ -1099,6 +1332,65 @@ export default function ProductDetail() {
 }
 
 const styles = StyleSheet.create({
+  // Ring size guide styles
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.darkGray,
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  paragraph: {
+    fontSize: 15,
+    color: colors.darkGray,
+    lineHeight: 22,
+    marginBottom: 8,
+  },
+  tableContainer: {
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+    borderRadius: 8,
+    marginBottom: 20,
+    overflow: 'hidden',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lightGray,
+  },
+  tableHeader: {
+    backgroundColor: colors.lightGray,
+  },
+  tableCell: {
+    padding: 12,
+    fontSize: 14,
+    textAlign: 'center',
+    borderRightWidth: 1,
+    borderRightColor: colors.lightGray,
+  },
+  evenRow: {
+    backgroundColor: '#f9f9f9',
+  },
+  oddRow: {
+    backgroundColor: '#fff',
+  },
+  selectedRow: {
+    backgroundColor: '#fff8e1',
+  },
+  closeButton: {
+    backgroundColor: colors.gold,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 6,
+    alignSelf: 'center',
+    marginTop: 24,
+  },
+  closeButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   enhancedCarouselWrapper: {
     position: 'relative',
     width: '100%',

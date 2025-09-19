@@ -377,7 +377,11 @@ export default function CheckoutScreen() {
     // Store order in database
     const orderData = {
       email: email,
-      items: cart,
+      items: cart.map(item => ({
+        ...item,
+        // Ensure selectedSize is preserved in each item
+        selectedSize: item.selectedSize || null
+      })),
       subtotal,
       discount: discountAmount,
       shipping: shippingCost,
@@ -385,6 +389,16 @@ export default function CheckoutScreen() {
       payment_method: paymentIntentId ? 'card' : 'express_checkout',
       payment_id: paymentIntentId || `order-${Date.now()}`,
       status: 'paid',
+      // Add metadata to include ring sizes
+      metadata: {
+        payment_method: paymentIntentId ? 'card' : 'express_checkout',
+        items_metadata: cart.map(item => ({
+          id: item.id,
+          name: item.title || item.name,
+          selectedSize: item.selectedSize || null,
+          quantity: item.quantity
+        }))
+      }
     };
     
     try {
@@ -1253,7 +1267,11 @@ export default function CheckoutScreen() {
             // Store order in database
             const orderData = {
               email: contact.email,
-              items: cart,
+              items: cart.map(item => ({
+                ...item,
+                // Ensure selectedSize is preserved in each item
+                selectedSize: item.selectedSize || null
+              })),
               subtotal,
               discount: discountAmount,
               shipping: shippingCost,
@@ -1261,6 +1279,16 @@ export default function CheckoutScreen() {
               payment_method: 'express_checkout',
               payment_id: result.paymentIntent.id,
               status: 'paid',
+              // Add metadata to include ring sizes
+              metadata: {
+                payment_method: 'express_checkout',
+                items_metadata: cart.map(item => ({
+                  id: item.id,
+                  name: item.title || item.name,
+                  selectedSize: item.selectedSize || null,
+                  quantity: item.quantity
+                }))
+              }
             };
             
             try {

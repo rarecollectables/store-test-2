@@ -28,6 +28,19 @@ const CATEGORIES = [
     icon: 'shopping-bag',
     subcategories: [] 
   },
+  {
+    name: 'PERSONALISED',
+    path: '/(tabs)/shop?tag=personalised',
+    icon: 'edit',
+    subcategories: [
+      { name: 'Personalised Rings', path: '/(tabs)/shop?category=Rings&tag=personalised' },
+      { name: 'Personalised Necklaces', path: '/(tabs)/shop?category=Necklaces&tag=personalised' },
+      { name: 'Personalised Bracelets', path: '/(tabs)/shop?category=Bracelets&tag=personalised' },
+      { name: 'Personalised Earrings', path: '/(tabs)/shop?category=Earrings&tag=personalised' },
+      { name: 'Personalised Cufflinks', path: '/(tabs)/shop?category=Cufflinks&tag=personalised' },
+      { name: 'View All Personalised Items', path: '/(tabs)/shop?tag=personalised' },
+    ]
+  },
   // {
   //   name: 'GIFTS FOR HER',
   //   path: '/(tabs)/shop?category=GiftsForHer',
