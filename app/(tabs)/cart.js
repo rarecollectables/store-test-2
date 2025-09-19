@@ -7,6 +7,7 @@ import { useStore } from '../../context/store';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { PRODUCTS } from '../(data)/products';
 import { trackEvent } from '../../lib/trackEvent';
+import { useCurrency } from '../../context/currency';
 
 function parsePrice(val) {
   if (typeof val === 'number') return val;
@@ -25,6 +26,7 @@ import { supabase } from '../../lib/supabase/client';
 export default function CartScreen() {
   const params = useLocalSearchParams();
   const { cart, updateCartItem, removeFromCart, lastVisitedRoute, addToCart } = useStore();
+  const { formatPrice } = useCurrency();
   const router = useRouter();
 
   React.useEffect(() => {
@@ -186,7 +188,7 @@ export default function CartScreen() {
               <View style={styles.itemDetails}>
                 <Text style={styles.title}>{item.title}</Text>
                 <View style={styles.priceContainer}>
-                  <Text style={styles.salesPrice}>{`₤${price > 0 ? (price * item.quantity).toFixed(2) : 'N/A'}`}</Text>
+                  <Text style={styles.salesPrice}>{price > 0 ? formatPrice(price * item.quantity) : 'N/A'}</Text>
                 </View>
                 <View style={styles.quantityRow}>
                   <Pressable
@@ -230,9 +232,9 @@ export default function CartScreen() {
         showsVerticalScrollIndicator={false}
       />
       <View style={styles.summary}>
-        <View style={styles.summaryRow}><Text style={styles.label}>Subtotal</Text><Text style={styles.value}>{`₤${subtotal.toFixed(2)}`}</Text></View>
-        {/* <View style={styles.summaryRow}><Text style={styles.label}>Shipping (UK)</Text><Text style={styles.value}>{`₤${shipping.toFixed(2)}`}</Text></View> */}
-        <View style={styles.summaryRow}><Text style={styles.labelTotal}>Total</Text><Text style={styles.valueTotal}>{`₤${total.toFixed(2)}`}</Text></View>
+        <View style={styles.summaryRow}><Text style={styles.label}>Subtotal</Text><Text style={styles.value}>{formatPrice(subtotal)}</Text></View>
+        {/* <View style={styles.summaryRow}><Text style={styles.label}>Shipping (UK)</Text><Text style={styles.value}>{formatPrice(shipping)}</Text></View> */}
+        <View style={styles.summaryRow}><Text style={styles.labelTotal}>Total</Text><Text style={styles.valueTotal}>{formatPrice(total)}</Text></View>
         <Pressable
           style={styles.checkoutBtn}
           onPress={handleProceedToCheckout}

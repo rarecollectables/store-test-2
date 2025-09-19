@@ -1,26 +1,26 @@
-import { View, Text, StyleSheet, Image as RNImage, ScrollView, Pressable, useWindowDimensions, FlatList, Platform, Animated } from 'react-native';
-import CartAddedModal from '../components/CartAddedModal';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, Image as RNImage, ScrollView, Pressable, useWindowDimensions, FlatList, Platform, Animated, Alert, ActivityIndicator, Modal } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
 import { FontAwesome } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState, useEffect, useRef, memo, useCallback } from 'react';
-import { PRODUCTS, LOCAL_IMAGES as DATA_IMAGES } from '../(data)/products';
 import { useStore } from '../../context/store';
+import { useCurrency } from '../../context/currency';
 import FeatureTiles from '../components/FeatureTiles';
-import { Alert } from 'react-native';
+import CartAddedModal from '../components/CartAddedModal';
 import { colors, fontFamily, spacing, borderRadius, shadows } from '../../theme/index.js';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchProductById } from '../../lib/supabase/fetchProductById';
 import { supabase } from '../../lib/supabase/client';
 import { trackEvent } from '../../lib/trackEvent';
 import LuxuryModal from '../components/LuxuryModal';
-import CollapsibleSection from '../components/CollapsibleSection';
+import Carousel from 'react-native-reanimated-carousel';
 
 import ZoomableImage from '../components/ZoomableImage';
 import RelatedProductsSection from '../components/RelatedProductsSection';
 import ProductReviews from '../components/ProductReviews';
 import ProductStructuredData from '../../components/ProductStructuredData';
 import Breadcrumbs from '../../components/Breadcrumbs';
+import CollapsibleSection from '../components/CollapsibleSection';
 
 function MemoCarouselImage({ item, style, onPress }) {
   // Check if this is a video item
@@ -67,13 +67,34 @@ function MemoCarouselImage({ item, style, onPress }) {
 }
 
 export default function ProductDetail() {
-  const [cartModalVisible, setCartModalVisible] = useState(false);
   const { width } = useWindowDimensions();
-  const [carouselWidth, setCarouselWidth] = useState(width); // <-- new state
-  const [featureModal, setFeatureModal] = useState({ open: false });
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { formatPrice } = useCurrency();
+  
+  // State variables
+  const [cartModalVisible, setCartModalVisible] = useState(false);
+  const [carouselWidth, setCarouselWidth] = useState(width);
+  const [featureModal, setFeatureModal] = useState({ open: false });
+  
+  // Helper function to parse price from string to number
+  const parsePrice = (price) => {
+    if (!price) return 0;
+    
+    if (typeof price === 'number') {
+      return price;
+    }
+    
+    if (typeof price === 'string') {
+      // Remove currency symbols and spaces
+      const cleaned = price.replace(/[£$€₦\s,]/g, '');
+      const numeric = parseFloat(cleaned);
+      return isNaN(numeric) ? 0 : numeric;
+    }
+    
+    return 0;
+  };
   const [currentIndex, setCurrentIndex] = useState(0);
   const [wishAnimating, setWishAnimating] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
@@ -120,10 +141,8 @@ export default function ProductDetail() {
       }
     ] : [];
     
-    // Then add the regular images
-    if (DATA_IMAGES[product.id]) {
-      images = [...videoItem, ...DATA_IMAGES[product.id]];
-    } else if (product.additional_images && Array.isArray(product.additional_images) && product.additional_images.length > 0) {
+    // Then add the regular images from the database
+    if (product.additional_images && Array.isArray(product.additional_images) && product.additional_images.length > 0) {
       images = [
         ...videoItem,
         ...(product.image_url ? [{ uri: product.image_url }] : (product.image ? [{ uri: product.image }] : [])),
@@ -168,12 +187,12 @@ export default function ProductDetail() {
       discountMultiplier = 1.25; // 20% discount
     } else {
       // No discount, return the same price
-      return `£${numericPrice.toFixed(2)}`;
+      return formatPrice(numericPrice);
     }
     
     // Regular price calculation
     const regularPrice = Math.round((numericPrice * discountMultiplier) * 100) / 100;
-    return `£${regularPrice.toFixed(2)}`;
+    return formatPrice(regularPrice);
   };
   
   // Get discount percentage based on product tags
@@ -688,7 +707,7 @@ export default function ProductDetail() {
                       <Text style={[styles.regularPrice]}>Regular Price: {calculateRegularPrice(product?.price, product)}</Text>
                     )}
                   </View>
-                  <Text style={[styles.salesPrice, { fontSize: 22, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, backgroundColor: colors.gold, color: colors.white, borderWidth: 1, borderColor: colors.softGoldBorder, ...desktopPrice }]}>{product?.price}</Text>
+                  <Text style={[styles.salesPrice, { fontSize: 22, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, backgroundColor: colors.gold, color: colors.white, borderWidth: 1, borderColor: colors.softGoldBorder, ...desktopPrice }]}>{formatPrice(parsePrice(product?.price))}</Text>
                 </View>
                 <Text style={{ fontSize: 14, color: '#4caf50', fontWeight: '600', marginTop: 8 }}>Free shipping & Free returns</Text>
               </View>

@@ -6,6 +6,8 @@ import { useStore } from '../../context/store';
 import { LOCAL_IMAGES, PRODUCTS } from '../(data)/products';
 import { useRouter } from 'expo-router';
 import { Swipeable } from 'react-native-gesture-handler';
+import { useCurrency } from '../../context/currency';
+import { trackEvent } from '../../lib/trackEvent';
 
 function AnimatedAddToCartButton({ onPress, title }) {
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
@@ -32,6 +34,7 @@ function AnimatedAddToCartButton({ onPress, title }) {
 export default function WishlistScreen() {
   const { wishlist, removeFromWishlist, addToCart, updateWishlistItem } = useStore();
   const router = useRouter();
+  const { formatPrice } = useCurrency();
 
   if (!wishlist || wishlist.length === 0) {
     return (
@@ -112,7 +115,7 @@ export default function WishlistScreen() {
               />
               <View style={styles.itemDetails}>
                 <Text style={styles.title}>{product.title}</Text>
-                <Text style={styles.price}>{product.price}</Text>
+                <Text style={styles.price}>{formatPrice(product.price)}</Text>
                 <View style={styles.quantityRow}>
                   <Pressable
                     style={styles.qtyBtn}

@@ -1,13 +1,14 @@
-import React, { useEffect } from 'react';
-import { trackEvent } from '../lib/trackEvent';
-import { View, Text, Pressable, StyleSheet, Image, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import React from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useStore } from '../context/store';
-import { colors, fontFamily } from '../theme';
+import { useRouter } from 'expo-router';
+import { colors, fontFamily, spacing, borderRadius } from '../theme';
+import { useCurrency } from '../context/currency';
 
 export default function ConfirmationScreen() {
   const router = useRouter();
   const { cart } = useStore();
+  const { formatPrice } = useCurrency();
 
   const subtotal = cart.reduce((sum, item) => sum + (typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0) * (item.quantity || 1), 0);
   const total = subtotal; // No tax applied
@@ -35,12 +36,12 @@ export default function ConfirmationScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemTitle}>{item.title}</Text>
                 <Text style={styles.itemDetails}>Qty: {item.quantity || 1}</Text>
-                <Text style={styles.itemDetails}>₤{((typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0) * (item.quantity || 1)).toFixed(2)}</Text>
+                <Text style={styles.itemDetails}>{formatPrice((typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0) * (item.quantity || 1))}</Text>
               </View>
             </View>
           ))}
-          <Text style={styles.summaryText}>Subtotal: ₤{subtotal.toFixed(2)}</Text>
-          <Text style={styles.summaryTextBold}>Total: ₤{total.toFixed(2)}</Text>
+          <Text style={styles.summaryText}>Subtotal: {formatPrice(subtotal)}</Text>
+          <Text style={styles.summaryTextBold}>Total: {formatPrice(total)}</Text>
         </View>
         <Text style={styles.delivery}>Estimated delivery: 2-4 business days</Text>
         <Pressable

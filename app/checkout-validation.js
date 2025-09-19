@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Image, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useStore } from '../context/store';
 import { colors, fontFamily, spacing, borderRadius, shadows } from '../theme';
 import { z } from 'zod';
+import { Image as ExpoImage } from 'expo-image';
+import { useCurrency } from '../context/currency';
 
 const contactSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -25,6 +27,7 @@ export default function CheckoutScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { cart, removeFromCart } = useStore();
+  const { formatPrice, convertPrice } = useCurrency();
   const [step, setStep] = useState(0);
   const [contact, setContact] = useState({ name: '', email: '' });
   const [address, setAddress] = useState({ line1: '', city: '', zip: '' });
@@ -163,13 +166,13 @@ export default function CheckoutScreen() {
           <View style={{ flex: 1 }}>
             <Text style={styles.reviewText}>{item.title}</Text>
             <Text style={styles.reviewText}>Qty: {item.quantity || 1}</Text>
-            <Text style={styles.reviewText}>₤{((typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0) * (item.quantity || 1)).toFixed(2)}</Text>
+            <Text style={styles.reviewText}>{formatPrice((typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0) * (item.quantity || 1))}</Text>
           </View>
         </View>
       ))}
-      <Text style={styles.reviewText}>Subtotal: ₤{subtotal.toFixed(2)}</Text>
-      <Text style={styles.reviewText}>Tax (10%): ₤{tax.toFixed(2)}</Text>
-      <Text style={styles.reviewText}>Total: ₤{total.toFixed(2)}</Text>
+      <Text style={styles.reviewText}>Subtotal: {formatPrice(subtotal)}</Text>
+      <Text style={styles.reviewText}>Tax (10%): {formatPrice(tax)}</Text>
+      <Text style={styles.reviewText}>Total: {formatPrice(total)}</Text>
       <Text style={styles.reviewText}>Name: {contact.name}</Text>
       <Text style={styles.reviewText}>Email: {contact.email}</Text>
       <Text style={styles.reviewText}>

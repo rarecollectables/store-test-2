@@ -15,8 +15,10 @@ import { Image } from 'expo-image';
 import { FontAwesome } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../context/store';
+import { useCurrency } from '../../context/currency';
 import { colors, fontFamily, spacing, borderRadius } from '../../theme/index.js';
 import { trackEvent } from '../../lib/trackEvent';
+import CountrySelector from './CountrySelector';
 
 // Categories for navigation
 const CATEGORIES = [
@@ -751,6 +753,13 @@ export default function Header({transparent = false}) {
             </View>
           )}
           <View style={styles.headerIcons}>
+            {/* Country Selector */}
+            <CountrySelector 
+              compact={!isDesktop} 
+              showFlag={true} 
+              showCurrency={isDesktop}
+              style={styles.countrySelector}
+            />
             <Pressable
               style={styles.iconButton}
               onPress={() => handleNavigation('/(tabs)/wishlist')}>
@@ -1163,6 +1172,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingRight: spacing.md,
     minWidth: 100,
+  },
+  countrySelector: {
+    marginRight: spacing.sm,
   },
   iconButton: {
     padding: spacing.sm,

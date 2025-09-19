@@ -15,6 +15,8 @@ import {
 } from 'react-native';
 import PaymentMethodsRow from './(components)/PaymentMethodsRow';
 import {useStore} from '../context/store';
+import {useCurrency} from '../context/currency';
+import PaystackPayment from './components/PaystackPayment';
 // import { PRODUCTS } from './(data)/products';
 import {fetchProductsShipping} from '../lib/supabase/products';
 import {getGuestSession} from '../lib/supabase/client';
@@ -138,6 +140,14 @@ export default function CheckoutScreen() {
   const [applyingCoupon, setApplyingCoupon] = useState(false);
 
   const {cart, removeFromCart} = useStore();
+  const {
+    selectedCountry,
+    config: currencyConfig,
+    convertPrice,
+    getCheckoutConfiguration,
+    isPaystackCountry,
+    formatPrice
+  } = useCurrency();
   const [contact, setContact] = useState({name: '', email: ''});
   const [address, setAddress] = useState({line1: '', city: '', postcode: ''});
   // Debounce timer for logging checkout attempts
@@ -213,10 +223,9 @@ export default function CheckoutScreen() {
   // }, []);
 
   const NETLIFY_STRIPE_CREATE_PAYMENT_FUNCTION_URL =
-    // isProd?
-    'https://rarecollectables.co.uk/.netlify/functions/create-payment-intent';
-  // :
-  // 'http://localhost:4242/create-payment-intent';
+    Platform.OS === 'web' && typeof window !== 'undefined' && window.location.hostname === 'localhost'
+      ? 'http://localhost:8888/.netlify/functions/create-payment-intent'
+      : 'https://rarecollectables.co.uk/.netlify/functions/create-payment-intent';
 
   const paymentintent = async () => {
     trackEvent({
@@ -243,12 +252,6 @@ export default function CheckoutScreen() {
       },
     };
 
-    // const shipping = {
-    //   line1: address.line1,
-    //   city: address.city,
-    //   postcode: address.postcode,
-    // };
-
     const requestBody = {
       cart,
       customer_email: contact.email,
@@ -259,13 +262,36 @@ export default function CheckoutScreen() {
       coupon: coupon || null,
       discountAmount: discountAmount || 0,
       automatic_payment_methods: {enabled: true},
-      // payment_method_types: paymentMethodTypes, // optional
     };
 
-    const response = await fetch(NETLIFY_STRIPE_CREATE_PAYMENT_FUNCTION_URL, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(requestBody),
+    // For development/testing, use a mock payment intent
+    const isDevelopment = Platform.OS === 'web' && typeof window !== 'undefined' && 
+                         (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    
+    if (isDevelopment) {
+      console.log('Development mode: Using mock payment intent');
+      // Create a mock client secret matching Stripe's expected format
+      // Format: pi_xxx_secret_xxx
+      const mockId = 'pi_' + Math.random().toString(36).substring(2, 15);
+      const mockSecret = Math.random().toString(36).substring(2, 15);
+      const mockClientSecret = `${mockId}_secret_${mockSecret}`;
+      
+      console.log('Mock client secret created:', mockClientSecret);
+      setClientSecret(mockClientSecret);
+      setStripeLoading(false);
+      trackEvent({eventType: 'view_payment_form'});
+      
+      // Note: In development, the payment will not actually process
+      // This is just for UI testing
+      return;
+    }
+
+    let response;
+    try {
+      response = await fetch(NETLIFY_STRIPE_CREATE_PAYMENT_FUNCTION_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(requestBody),
       // body: JSON.stringify({
       //   cart,
       //   customer_email: contact.email,
@@ -280,20 +306,27 @@ export default function CheckoutScreen() {
       //   automatic_payment_methods: {enabled: true},
       //   // payment_method_types: paymentMethodTypes, // 👈 send dynamic method
       // }),
-    });
-    console.log('====================================');
-    console.log('requestBody', requestBody);
-    console.log('====================================');
-    const data = await response.json();
-    console.log('Payment intent response:', data);
-    if (data.clientSecret) {
-      setClientSecret(data.clientSecret);
-      setStripeLoading(false);
-      // For analytics - track payment form view
-      trackEvent({eventType: 'view_payment_form'});
-    } else {
+      });
+      console.log('====================================');
+      console.log('requestBody', requestBody);
+      console.log('====================================');
+      const data = await response.json();
+      console.log('Payment intent response:', data);
+      if (data.clientSecret) {
+        setClientSecret(data.clientSecret);
+        setStripeLoading(false);
+        // For analytics - track payment form view
+        trackEvent({eventType: 'view_payment_form'});
+      } else {
+        setStripeError(
+          'Failed to create payment intent. Please try again later.',
+        );
+        setStripeLoading(false);
+      }
+    } catch (error) {
+      console.error('Payment intent fetch error:', error);
       setStripeError(
-        'Failed to create payment intent. Please try again later.',
+        'Network error. Please check your connection and try again.',
       );
       setStripeLoading(false);
     }
@@ -955,6 +988,13 @@ export default function CheckoutScreen() {
     return 0;
   };
 
+  // Helper function to add thousand separators
+  const addThousandSeparators = (num) => {
+    const parts = num.toString().split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+  };
+
   const calculateTotal = () => {
     const subtotal = cart.reduce(
       (sum, item) => sum + item.price * item.quantity,
@@ -962,8 +1002,11 @@ export default function CheckoutScreen() {
     );
     const discount = getDiscountAmount();
     const shipping = shippingOption === 'express' ? 4.99 : 0;
+    const totalGBP = subtotal - discount + shipping;
 
-    return (subtotal - discount + shipping).toFixed(2);
+    // Convert to selected currency
+    const checkoutConfig = getCheckoutConfiguration(totalGBP);
+    return addThousandSeparators(checkoutConfig.amount.toFixed(2));
   };
 
   const GooglePayCheckout = ({clientSecret, totalAmount, contact}) => {
@@ -1468,7 +1511,7 @@ export default function CheckoutScreen() {
       {/* Mobile Order Summary - Collapsible */}
       {!isDesktop && (
         <CollapsibleSection
-          title={`Order Summary (${cart.length} ${cart.length === 1 ? 'item' : 'items'}) - £${total.toFixed(2)}`}
+          title={`Order Summary (${cart.length} ${cart.length === 1 ? 'item' : 'items'}) - ${currencyConfig.symbol}${calculateTotal()}`}
           initiallyCollapsed={true}>
           <View style={styles.mobileSummaryContainer}>
             {/* Cart Items Summary */}
@@ -1495,8 +1538,8 @@ export default function CheckoutScreen() {
                       Qty: {item.quantity}
                     </Text>
                   </View>
-                  <Text style={styles.cartItemPrice}>
-                    £{(item.price * item.quantity).toFixed(2)}
+                  <Text style={styles.itemPrice}>
+                    {formatPrice(item.price * item.quantity)}
                   </Text>
                 </View>
               ))}
@@ -1507,24 +1550,24 @@ export default function CheckoutScreen() {
             {/* Price Summary */}
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Subtotal</Text>
-              <Text style={styles.summaryValue}>£{subtotal.toFixed(2)}</Text>
+              <Text style={styles.summaryValue}>{formatPrice(subtotal)}</Text>
             </View>
             
             {couponStatus?.valid && discountAmount > 0 && (
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Discount</Text>
-                <Text style={styles.summaryValue}>-£{discountAmount.toFixed(2)}</Text>
+                <Text style={styles.summaryValue}>-{formatPrice(discountAmount)}</Text>
               </View>
             )}
             
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Shipping</Text>
-              <Text style={styles.summaryValue}>£{shippingCost.toFixed(2)}</Text>
+              <Text style={styles.summaryValue}>{formatPrice(shippingCost)}</Text>
             </View>
             
             <View style={[styles.summaryRow, styles.totalRow]}>
               <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalValue}>£{total.toFixed(2)}</Text>
+              <Text style={styles.totalValue}>{currencyConfig.symbol}{calculateTotal()}</Text>
             </View>
             
             {/* Discount Code Field */}
@@ -1567,7 +1610,7 @@ export default function CheckoutScreen() {
                   {couponStatus.valid 
                     ? `Coupon applied: ${coupon.toUpperCase()} ${couponStatus.discount.type === 'percent' 
                       ? `(${couponStatus.discount.value}% off)` 
-                      : `(-£${couponStatus.discount.value.toFixed(2)})`}`
+                      : `(-${formatPrice(couponStatus.discount.value)})`}`
                     : couponStatus.error
                   }
                 </Text>
@@ -1631,11 +1674,41 @@ export default function CheckoutScreen() {
           </Elements>
         )}
       </View>
-      <View style={styles.orDivider}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.orText}>OR</Text>
-        <View style={styles.dividerLine} />
-      </View>
+      
+      {/* Paystack Payment for Nigeria */}
+      {isPaystackCountry() && (
+        <>
+          <PaystackPayment
+            amount={parseFloat(calculateTotal())}
+            email={contact.email}
+            onSuccess={(response) => {
+              console.log('Paystack payment successful:', response);
+              handleCheckoutSuccess(contact.email, response.reference);
+            }}
+            onError={(error) => {
+              console.error('Paystack payment error:', error);
+              Alert.alert('Payment Error', error.message || 'Payment failed. Please try again.');
+            }}
+            onCancel={() => {
+              console.log('Paystack payment cancelled');
+            }}
+            disabled={!contact.email || paying}
+          />
+          <View style={styles.orDivider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.orText}>OR</Text>
+            <View style={styles.dividerLine} />
+          </View>
+        </>
+      )}
+      
+      {!isPaystackCountry() && (
+        <View style={styles.orDivider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.orText}>OR</Text>
+          <View style={styles.dividerLine} />
+        </View>
+      )}
 
       <View style={[styles.desktopContainer, isDesktop && styles.desktopRow]}>
         {/* Main Form Column */}
@@ -1721,7 +1794,7 @@ export default function CheckoutScreen() {
                   Coupon applied: {coupon.toUpperCase()}{' '}
                   {couponStatus.discount.type === 'percent'
                     ? `(${couponStatus.discount.value}% off)`
-                    : `(-₤${couponStatus.discount.value.toFixed(2)})`}
+                    : `(-${formatPrice(couponStatus.discount.value)})`}
                 </Text>
               ) : (
                 <Text style={[styles.errorText, {marginBottom: 4}]}>
@@ -1776,7 +1849,7 @@ export default function CheckoutScreen() {
               <View style={styles.shippingOptionDetails}>
                 <Text style={styles.shippingOptionLabel}>Next Day Delivery</Text>
               </View>
-              <Text style={styles.shippingOptionPrice}>£3.99</Text>
+              <Text style={styles.shippingOptionPrice}>{formatPrice(3.99)}</Text>
             </Pressable>
           </CollapsibleSection>
 
@@ -2011,7 +2084,7 @@ export default function CheckoutScreen() {
                   </Text>
                 </View>
                 <Text style={styles.cartItemPrice}>
-                  ₤{(item.price * item.quantity).toFixed(2)}
+                  {formatPrice(item.price * item.quantity)}
                 </Text>
               </View>
             ))}
@@ -2060,7 +2133,7 @@ export default function CheckoutScreen() {
                 Coupon applied: {coupon.toUpperCase()}{' '}
                 {couponStatus.discount.type === 'percent'
                   ? `(${couponStatus.discount.value}% off)`
-                  : `(-₤${couponStatus.discount.value.toFixed(2)})`}
+                  : `(-${formatPrice(couponStatus.discount.value)})`}
               </Text>
             ) : (
               <Text style={[styles.errorText, {marginBottom: 4}]}>
@@ -2071,13 +2144,13 @@ export default function CheckoutScreen() {
           {/* Price Summary */}
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>{`₤${subtotal.toFixed(2)}`}</Text>
+            <Text style={styles.summaryValue}>{formatPrice(subtotal)}</Text>
           </View>
           {couponStatus?.valid && discountAmount > 0 && (
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Discount</Text>
               <Text style={[styles.summaryValue, {color: colors.gold}]}>
-                -₤{discountAmount.toFixed(2)}
+                -{formatPrice(discountAmount)}
               </Text>
             </View>
           )}
@@ -2094,10 +2167,7 @@ export default function CheckoutScreen() {
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabelTotal}>Total</Text>
             <Text style={styles.summaryValueTotal}>
-              £{calculateTotal()}
-              {/* {`₤${total.toFixed(
-              2,
-            )}`} */}
+              {currencyConfig.symbol}{calculateTotal()}
             </Text>
           </View>
 

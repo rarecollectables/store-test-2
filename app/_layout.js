@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StoreProvider } from '../context/store';
+import { CurrencyProvider } from '../context/currency';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { trackEvent } from '../lib/trackEvent';
 import { getLocationInfo } from '../lib/trackEvent';
@@ -86,7 +87,8 @@ export default function RootLayout() {
   return (
     <PaperProvider>
       <StoreProvider>
-        <SafeAreaProvider>
+        <CurrencyProvider>
+          <SafeAreaProvider>
           {/* Add default SEO meta tags for all pages */}
           <SEO 
             title="Rare Collectables | Affordable Luxury"
@@ -145,7 +147,8 @@ export default function RootLayout() {
               options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }}
             />
           </Stack>
-        </SafeAreaProvider>
+          </SafeAreaProvider>
+        </CurrencyProvider>
       </StoreProvider>
     </PaperProvider>
   );

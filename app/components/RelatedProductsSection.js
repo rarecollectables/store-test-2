@@ -4,11 +4,31 @@ import { Image as ExpoImage } from 'expo-image';
 import { FontAwesome } from '@expo/vector-icons';
 import { productsService } from '../../lib/supabase/services';
 import { colors } from '../../theme';
+import { useCurrency } from '../../context/currency';
 
 export default function RelatedProductsSection({ category, excludeId, onProductPress }) {
   const [related, setRelated] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { formatPrice } = useCurrency();
+  
+  // Helper function to parse price from string to number
+  const parsePrice = (price) => {
+    if (!price) return 0;
+    
+    if (typeof price === 'number') {
+      return price;
+    }
+    
+    if (typeof price === 'string') {
+      // Remove currency symbols and spaces
+      const cleaned = price.replace(/[£$€₦\s,]/g, '');
+      const numeric = parseFloat(cleaned);
+      return isNaN(numeric) ? 0 : numeric;
+    }
+    
+    return 0;
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -102,7 +122,7 @@ export default function RelatedProductsSection({ category, excludeId, onProductP
                 {item.title || item.name}
               </Text>
               <Text style={{ color: colors.gold, fontWeight: 'bold', fontSize: 15 }}>
-                {item.price}
+                {formatPrice(parsePrice(item.price))}
               </Text>
             </View>
           </Pressable>

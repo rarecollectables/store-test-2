@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { storeOrder } from './components/orders-modal';
-import { loadStripe } from '@stripe/stripe-js';
+import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../theme';
+import { useStore } from '../context/store';
+import { supabase } from '../lib/supabase/client';
+import { useCurrency } from '../context/currency';
 import { trackEvent } from '../lib/trackEvent';
 
 // Define getUserOrders function directly to avoid import issues
@@ -30,10 +34,11 @@ function getDeviceKey() {
 
 export default function CheckoutSuccess() {
   const router = useRouter();
-  const params = useLocalSearchParams();
+  const { payment_intent, redirect_status, session_id } = useLocalSearchParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { formatPrice } = useCurrency();
   
   useEffect(() => {
     const checkPaymentStatus = async () => {
@@ -411,21 +416,21 @@ export default function CheckoutSuccess() {
             <strong>Status:</strong> {order.status || 'Confirmed'}
           </p>
           <p style={{ fontSize: 16, marginBottom: 8 }}>
-            <strong>Total:</strong> £{order.total?.toFixed(2)}
+            <strong>Total:</strong> {formatPrice(order.total || 0)}
           </p>
           <div style={{ marginTop: 16 }}>
             <p style={{ fontSize: 16, marginBottom: 8, fontWeight: 'bold' }}>Items:</p>
             {order.items && order.items.map((item, idx) => (
               <div key={idx} style={{ marginBottom: 8, paddingLeft: 12 }}>
                 <p style={{ fontSize: 14, margin: 0 }}>
-                  • {item.title || item.name} x{item.quantity} - £{(item.price * item.quantity).toFixed(2)}
+                  • {item.title || item.name} x{item.quantity} - {formatPrice(item.price * item.quantity)}
                 </p>
               </div>
             ))}
           </div>
           {order.discount > 0 && (
             <p style={{ fontSize: 16, marginTop: 8, color: '#4CAF50' }}>
-              <strong>Discount:</strong> -£{order.discount.toFixed(2)}
+              <strong>Discount:</strong> -{formatPrice(order.discount)}
             </p>
           )}
           <div style={{ marginTop: 12, fontSize: 14 }}>

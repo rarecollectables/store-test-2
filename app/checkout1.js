@@ -1,31 +1,20 @@
-import React, {useState, useEffect, useRef} from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  Pressable,
-  ActivityIndicator,
-  ScrollView,
-  Platform,
-  Dimensions,
-  Image,
-  Switch,
-  TouchableOpacity,
-  Animated,
-  KeyboardAvoidingView,
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, Alert, ActivityIndicator, Platform } from 'react-native';
+import { useStore } from '../context/store';
+import { useRouter, Link } from 'expo-router';
+import { colors, fontFamily, spacing, borderRadius, shadows } from '../theme';
+import { Image as ExpoImage } from 'expo-image';
+import { FontAwesome } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PaymentMethodsRow from './(components)/PaymentMethodsRow';
-import {useStore} from '../context/store';
-import {fetchProductsShipping} from '../lib/supabase/products';
-import {getGuestSession} from '../lib/supabase/client';
-import {checkoutAttemptService} from '../lib/supabase/services';
-import {z} from 'zod';
-import {storeOrder} from './components/orders-modal';
-import {trackEvent} from '../lib/trackEvent';
-import {colors, fontFamily, spacing, borderRadius, shadows} from '../theme';
+import { useCurrency } from '../context/currency';
+import { fetchProductsShipping } from '../lib/supabase/products';
+import { getGuestSession } from '../lib/supabase/client';
+import { checkoutAttemptService } from '../lib/supabase/services';
+import { z } from 'zod';
+import { storeOrder } from './components/orders-modal';
+import { trackEvent } from '../lib/trackEvent';
 import ConfirmationModal from './components/ConfirmationModal';
-import {useRouter, Link} from 'expo-router';
 import {
   CardElement,
   useElements,
@@ -34,7 +23,6 @@ import {
 } from '@stripe/react-stripe-js';
 import {loadStripe} from '@stripe/stripe-js';
 import Constants from 'expo-constants';
-import {FontAwesome} from '@expo/vector-icons';
 
 // Haptic feedback utility that's safe for web (no-op on web)
 const triggerHaptic = type => {

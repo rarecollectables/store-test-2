@@ -473,10 +473,12 @@ import {useRouter} from 'expo-router';
 import {colors, spacing, borderRadius, fontFamily} from '../../../theme';
 import {useStore} from '../../../context/store';
 import {trackEvent} from '../../../lib/trackEvent';
+import {useCurrency} from '../../../context/currency';
 
 export default function ProductCard({item, cardWidth, disableImageCycling}) {
   const router = useRouter();
   const {addToCart} = useStore();
+  const {formatPrice} = useCurrency();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
@@ -534,44 +536,41 @@ export default function ProductCard({item, cardWidth, disableImageCycling}) {
 
   const parsePrice = (price) => {
     if (!price) return 0;
-    const numeric =
-      typeof price === 'number'
-        ? price
-        : typeof price === 'string'
-          ? parseFloat(price.replace(/[£\s]/g, ''))
-          : 0;
-    return isNaN(numeric) ? 0 : numeric;
+    
+    if (typeof price === 'number') {
+      return price;
+    }
+    
+    if (typeof price === 'string') {
+      // Remove currency symbols and spaces
+      const cleaned = price.replace(/[£$€₦\s,]/g, '');
+      const numeric = parseFloat(cleaned);
+      return isNaN(numeric) ? 0 : numeric;
+    }
+    
+    return 0;
   };
 
-  const formatPrice = (price) => {
-    if (!price && price !== 0) return 'Price N/A';
-    const numeric =
-      typeof price === 'number'
-        ? price
-        : typeof price === 'string'
-          ? parseFloat(price.replace(/[£\s]/g, ''))
-          : 0;
-    return isNaN(numeric) ? 'Price N/A' : `£${numeric.toFixed(2)}`;
-  };
+  // formatPrice function now comes from useCurrency() hook
 
   const calculateRegularPrice = (salesPrice, product) => {
     const price = parsePrice(salesPrice);
+    if (price === 0) return 0;
+
     const tags = product?.tags || [];
-    
-    let multiplier = 1; // No discount by default
-    
+    let discountMultiplier = 1;
+
     if (tags.includes('40-off')) {
-      multiplier = 1.67; // ~40% discount
+      discountMultiplier = 1.67;
     } else if (tags.includes('20-off')) {
-      multiplier = 1.25; // 20% discount
+      discountMultiplier = 1.25;
     } else {
-      // No discount
-      return null;
+      return price; // Return the numeric value, not formatted
     }
-    
-    return Math.round(price * multiplier * 100) / 100;
+
+    const regularPrice = Math.round(price * discountMultiplier * 100) / 100;
+    return regularPrice; // Return numeric value
   };
-  // console.log('ProductCard: item', item);
 
   const getDiscountPercentage = () => {
     const salePrice = parsePrice(item.price);
@@ -664,7 +663,7 @@ export default function ProductCard({item, cardWidth, disableImageCycling}) {
           <Text style={styles.regularPrice}>
             {formatPrice(calculateRegularPrice(item.price, item))}
           </Text>
-          <Text style={styles.salesPrice}>{formatPrice(item.price)}</Text>
+          <Text style={styles.salesPrice}>{formatPrice(parsePrice(item.price))}</Text>
         </View>
 
         <View style={styles.colorSwatches}>
