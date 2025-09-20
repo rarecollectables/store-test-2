@@ -160,7 +160,25 @@ export default function CheckoutScreen() {
   const [stripeError, setStripeError] = useState(null);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+  const [showPaystackButton, setShowPaystackButton] = useState(false);
   const [paymentRequest, setPaymentRequest] = useState(null);
+
+  // Handle payment method selection
+  const handlePaymentMethodSelect = (method) => {
+    setSelectedPaymentMethod(method);
+    setErrors({ ...errors, payment: [] });
+    
+    // Show Paystack button if a Paystack method is selected
+    if (method && (method === 'paystack_card' || 
+                  method === 'paystack_bank_transfer' || 
+                  method === 'paystack_ussd' || 
+                  method === 'paystack_bank' || 
+                  method === 'paystack_opay')) {
+      setShowPaystackButton(true);
+    } else {
+      setShowPaystackButton(false);
+    }
+  };
   const [canUsePaymentRequest, setCanUsePaymentRequest] = useState(false);
   // Check if we're on desktop (width > 768px)
   const [isDesktop, setIsDesktop] = useState(false);
@@ -1645,6 +1663,28 @@ export default function CheckoutScreen() {
               )}
             </View>
           </View>
+          
+          {/* Paystack Continue Button */}
+          {showPaystackButton && (
+            <Pressable
+              style={[styles.payNowButton, { marginTop: 16 }]}
+              onPress={() => {
+                // Trigger Paystack payment
+                if (selectedPaymentMethod) {
+                  // This will trigger the PaystackPayment component's payment flow
+                  const paystackButton = document.querySelector('button[type="button"]');
+                  if (paystackButton) {
+                    paystackButton.click();
+                  }
+                }
+              }}
+              disabled={!contact.email || paying}
+            >
+              <Text style={styles.payNowButtonText}>
+                {paying ? 'Processing...' : `Continue to ${getPaymentMethodName(selectedPaymentMethod)}`}
+              </Text>
+            </Pressable>
+          )}
         </CollapsibleSection>
       )}
       
@@ -1705,29 +1745,58 @@ export default function CheckoutScreen() {
       
       {/* Paystack Payment for Nigeria */}
       {isPaystackCountry() && (
-        <>
-          <PaystackPayment
-            amount={parseFloat(calculateTotal())}
-            email={contact.email}
-            onSuccess={(response) => {
-              console.log('Paystack payment successful:', response);
-              handleCheckoutSuccess(contact.email, response.reference);
+        <View style={{ marginTop: 20 }}>
+          <Text style={styles.sectionTitle}>Pay with Paystack</Text>
+          <Text style={[styles.sectionSubtitle, { marginBottom: 16 }]}>
+            Secure payment powered by Paystack
+          </Text>
+          
+          {/* Paystack Payment Button */}
+          <Pressable
+            style={[styles.checkoutButton, (paying || !contact.email) && styles.checkoutButtonDisabled]}
+            onPress={() => {
+              // This will be handled by the PaystackPayment component
+              setShowPaystackButton(true);
             }}
-            onError={(error) => {
-              console.error('Paystack payment error:', error);
-              Alert.alert('Payment Error', error.message || 'Payment failed. Please try again.');
-            }}
-            onCancel={() => {
-              console.log('Paystack payment cancelled');
-            }}
-            disabled={!contact.email || paying}
-          />
+            disabled={paying || !contact.email}
+          >
+            {paying ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.checkoutButtonText}>
+                Pay {formatPrice(calculateTotal())} with Paystack
+              </Text>
+            )}
+          </Pressable>
+          
+          {/* Paystack Payment Component - Invisible but triggered by the button */}
+          {showPaystackButton && (
+            <PaystackPayment
+              amount={parseFloat(calculateTotal())}
+              email={contact.email}
+              onSuccess={(response) => {
+                console.log('Paystack payment successful:', response);
+                setShowPaystackButton(false);
+                handleCheckoutSuccess(contact.email, response.reference);
+              }}
+              onError={(error) => {
+                console.error('Paystack payment error:', error);
+                setShowPaystackButton(false);
+                Alert.alert('Payment Error', error.message || 'Payment failed. Please try again.');
+              }}
+              onCancel={() => {
+                console.log('Paystack payment cancelled');
+                setShowPaystackButton(false);
+              }}
+            />
+          )}
+          
           <View style={styles.orDivider}>
             <View style={styles.dividerLine} />
             <Text style={styles.orText}>OR</Text>
             <View style={styles.dividerLine} />
           </View>
-        </>
+        </View>
       )}
       
       {!isPaystackCountry() && (
@@ -1885,108 +1954,232 @@ export default function CheckoutScreen() {
             <Text style={styles.sectionTitle}>Payment</Text>
 
             <View style={styles.paymentMethodsContainer}>
-              <Pressable
-                style={[
-                  styles.paymentMethod,
-                  selectedPaymentMethod === 'card' &&
-                    styles.paymentMethodSelected,
-                ]}
-                onPress={() => setSelectedPaymentMethod('card')}>
-                <View style={styles.radioCircle}>
-                  {selectedPaymentMethod === 'card' && (
-                    <View style={styles.radioCircleDot} />
-                  )}
-                </View>
-                <View style={styles.paymentMethodDetails}>
-                  <Text style={styles.paymentMethodLabel}>
-                    Credit / Debit Card
-                  </Text>
-                  <Text style={styles.paymentMethodDescription}>
-                    All major cards accepted
-                  </Text>
-                </View>
-                <Image
-                  source={require('../assets/images/payment-logo.png')}
-                  style={styles.paymentMethodIcon}
-                  resizeMode="contain"
-                />
-              </Pressable>
+              {selectedCountry === 'NG' ? (
+                // Paystack Payment Options for Nigeria
+                <>
+                  {/* Card Payment Option */}
+                  <Pressable
+                    style={[
+                      styles.paymentMethod,
+                      selectedPaymentMethod === 'paystack_card' && styles.paymentMethodSelected,
+                    ]}
+                    onPress={() => handlePaymentMethodSelect('paystack_card')}>
+                    <View style={styles.radioCircle}>
+                      {selectedPaymentMethod === 'paystack_card' && (
+                        <View style={styles.radioCircleDot} />
+                      )}
+                    </View>
+                    <View style={styles.paymentMethodDetails}>
+                      <Text style={styles.paymentMethodLabel}>
+                        Card Payment
+                      </Text>
+                      <Text style={styles.paymentMethodDescription}>
+                        Pay with Visa, Mastercard, Verve, or AmEx
+                      </Text>
+                    </View>
+                    <View style={styles.paymentIconsContainer}>
+                      <Text style={styles.paymentIcon}>💳</Text>
+                    </View>
+                  </Pressable>
 
-              <Pressable
-                style={[
-                  styles.paymentMethod,
-                  selectedPaymentMethod === 'paypal' &&
-                    styles.paymentMethodSelected,
-                ]}
-                onPress={() => setSelectedPaymentMethod('paypal')}>
-                <View style={styles.radioCircle}>
-                  {selectedPaymentMethod === 'paypal' && (
-                    <View style={styles.radioCircleDot} />
-                  )}
-                </View>
-                <View style={styles.paymentMethodDetails}>
-                  <Text style={styles.paymentMethodLabel}>PayPal</Text>
-                  <Text style={styles.paymentMethodDescription}>
-                    Fast and secure checkout
-                  </Text>
-                </View>
-                <FontAwesome
-                  name="paypal"
-                  size={24}
-                  color="#003087"
-                  style={{marginHorizontal: 8}}
-                />
-              </Pressable>
+                  {/* Bank Transfer Option */}
+                  <Pressable
+                    style={[
+                      styles.paymentMethod,
+                      selectedPaymentMethod === 'paystack_bank_transfer' && styles.paymentMethodSelected,
+                    ]}
+                    onPress={() => handlePaymentMethodSelect('paystack_bank_transfer')}>
+                    <View style={styles.radioCircle}>
+                      {selectedPaymentMethod === 'paystack_bank_transfer' && (
+                        <View style={styles.radioCircleDot} />
+                      )}
+                    </View>
+                    <View style={styles.paymentMethodDetails}>
+                      <Text style={styles.paymentMethodLabel}>
+                        Bank Transfer
+                      </Text>
+                      <Text style={styles.paymentMethodDescription}>
+                        Transfer from any Nigerian bank
+                      </Text>
+                    </View>
+                    <Text style={styles.paymentIcon}>🏦</Text>
+                  </Pressable>
 
-              <Pressable
-                style={[
-                  styles.paymentMethod,
-                  selectedPaymentMethod === 'klarna' &&
-                    styles.paymentMethodSelected,
-                ]}
-                onPress={() => setSelectedPaymentMethod('klarna')}>
-                <View style={styles.radioCircle}>
-                  {selectedPaymentMethod === 'klarna' && (
-                    <View style={styles.radioCircleDot} />
-                  )}
-                </View>
-                <View style={styles.paymentMethodDetails}>
-                  <Text style={styles.paymentMethodLabel}>Klarna</Text>
-                  <Text style={styles.paymentMethodDescription}>
-                    Pay in 3 interest-free installments
-                  </Text>
-                </View>
-                <Image
-                  source={require('../assets/images/klarna-logo.png')}
-                  style={[styles.paymentMethodIcon, {width: 40}]}
-                  resizeMode="contain"
-                />
-              </Pressable>
+                  {/* USSD Payment Option */}
+                  <Pressable
+                    style={[
+                      styles.paymentMethod,
+                      selectedPaymentMethod === 'paystack_ussd' && styles.paymentMethodSelected,
+                    ]}
+                    onPress={() => handlePaymentMethodSelect('paystack_ussd')}>
+                    <View style={styles.radioCircle}>
+                      {selectedPaymentMethod === 'paystack_ussd' && (
+                        <View style={styles.radioCircleDot} />
+                      )}
+                    </View>
+                    <View style={styles.paymentMethodDetails}>
+                      <Text style={styles.paymentMethodLabel}>
+                        USSD
+                      </Text>
+                      <Text style={styles.paymentMethodDescription}>
+                        Pay instantly with USSD
+                      </Text>
+                    </View>
+                    <Text style={styles.paymentIcon}>📱</Text>
+                  </Pressable>
 
-              <Pressable
-                style={[
-                  styles.paymentMethod,
-                  selectedPaymentMethod === 'afterpay_clearpay' &&
-                    styles.paymentMethodSelected,
-                ]}
-                onPress={() => setSelectedPaymentMethod('afterpay_clearpay')}>
-                <View style={styles.radioCircle}>
-                  {selectedPaymentMethod === 'afterpay_clearpay' && (
-                    <View style={styles.radioCircleDot} />
-                  )}
-                </View>
-                <View style={styles.paymentMethodDetails}>
-                  <Text style={styles.paymentMethodLabel}>Clearpay</Text>
-                  <Text style={styles.paymentMethodDescription}>
-                    Pay in 4 interest-free installments
-                  </Text>
-                </View>
-                <Image
-                  source={require('../assets/images/clearpay-logo.png')}
-                  style={[styles.paymentMethodIcon, {width: 40}]}
-                  resizeMode="contain"
-                />
-              </Pressable>
+                  {/* Pay with Bank Option */}
+                  <Pressable
+                    style={[
+                      styles.paymentMethod,
+                      selectedPaymentMethod === 'paystack_bank' && styles.paymentMethodSelected,
+                    ]}
+                    onPress={() => handlePaymentMethodSelect('paystack_bank')}>
+                    <View style={styles.radioCircle}>
+                      {selectedPaymentMethod === 'paystack_bank' && (
+                        <View style={styles.radioCircleDot} />
+                      )}
+                    </View>
+                    <View style={styles.paymentMethodDetails}>
+                      <Text style={styles.paymentMethodLabel}>
+                        Pay with Bank
+                      </Text>
+                      <Text style={styles.paymentMethodDescription}>
+                        Secure online banking
+                      </Text>
+                    </View>
+                    <Text style={styles.paymentIcon}>🏧</Text>
+                  </Pressable>
+
+                  {/* OPay Payment Option */}
+                  <Pressable
+                    style={[
+                      styles.paymentMethod,
+                      selectedPaymentMethod === 'paystack_opay' && styles.paymentMethodSelected,
+                    ]}
+                    onPress={() => handlePaymentMethodSelect('paystack_opay')}>
+                    <View style={styles.radioCircle}>
+                      {selectedPaymentMethod === 'paystack_opay' && (
+                        <View style={styles.radioCircleDot} />
+                      )}
+                    </View>
+                    <View style={styles.paymentMethodDetails}>
+                      <Text style={styles.paymentMethodLabel}>
+                        OPay
+                      </Text>
+                      <Text style={styles.paymentMethodDescription}>
+                        Fast and secure payment
+                      </Text>
+                    </View>
+                    <View style={styles.opayLogoContainer}>
+                      <Text style={styles.opayLogo}>O</Text>
+                      <Text style={[styles.opayLogo, {color: '#00AA2B'}]}>Pay</Text>
+                    </View>
+                  </Pressable>
+                </>
+              ) : (
+                // Standard Payment Options for other countries
+                <>
+                  <Pressable
+                    style={[
+                      styles.paymentMethod,
+                      selectedPaymentMethod === 'card' && styles.paymentMethodSelected,
+                    ]}
+                    onPress={() => setSelectedPaymentMethod('card')}>
+                    <View style={styles.radioCircle}>
+                      {selectedPaymentMethod === 'card' && (
+                        <View style={styles.radioCircleDot} />
+                      )}
+                    </View>
+                    <View style={styles.paymentMethodDetails}>
+                      <Text style={styles.paymentMethodLabel}>
+                        Credit / Debit Card
+                      </Text>
+                      <Text style={styles.paymentMethodDescription}>
+                        All major cards accepted
+                      </Text>
+                    </View>
+                    <Image
+                      source={require('../assets/images/payment-logo.png')}
+                      style={styles.paymentMethodIcon}
+                      resizeMode="contain"
+                    />
+                  </Pressable>
+
+                  <Pressable
+                    style={[
+                      styles.paymentMethod,
+                      selectedPaymentMethod === 'paypal' && styles.paymentMethodSelected,
+                    ]}
+                    onPress={() => setSelectedPaymentMethod('paypal')}>
+                    <View style={styles.radioCircle}>
+                      {selectedPaymentMethod === 'paypal' && (
+                        <View style={styles.radioCircleDot} />
+                      )}
+                    </View>
+                    <View style={styles.paymentMethodDetails}>
+                      <Text style={styles.paymentMethodLabel}>PayPal</Text>
+                      <Text style={styles.paymentMethodDescription}>
+                        Fast and secure checkout
+                      </Text>
+                    </View>
+                    <FontAwesome
+                      name="paypal"
+                      size={24}
+                      color="#003087"
+                      style={{marginHorizontal: 8}}
+                    />
+                  </Pressable>
+
+                  <Pressable
+                    style={[
+                      styles.paymentMethod,
+                      selectedPaymentMethod === 'klarna' && styles.paymentMethodSelected,
+                    ]}
+                    onPress={() => setSelectedPaymentMethod('klarna')}>
+                    <View style={styles.radioCircle}>
+                      {selectedPaymentMethod === 'klarna' && (
+                        <View style={styles.radioCircleDot} />
+                      )}
+                    </View>
+                    <View style={styles.paymentMethodDetails}>
+                      <Text style={styles.paymentMethodLabel}>Klarna</Text>
+                      <Text style={styles.paymentMethodDescription}>
+                        Pay in 3 interest-free installments
+                      </Text>
+                    </View>
+                    <Image
+                      source={require('../assets/images/klarna-logo.png')}
+                      style={[styles.paymentMethodIcon, {width: 40}]}
+                      resizeMode="contain"
+                    />
+                  </Pressable>
+
+                  <Pressable
+                    style={[
+                      styles.paymentMethod,
+                      selectedPaymentMethod === 'afterpay_clearpay' && styles.paymentMethodSelected,
+                    ]}
+                    onPress={() => setSelectedPaymentMethod('afterpay_clearpay')}>
+                    <View style={styles.radioCircle}>
+                      {selectedPaymentMethod === 'afterpay_clearpay' && (
+                        <View style={styles.radioCircleDot} />
+                      )}
+                    </View>
+                    <View style={styles.paymentMethodDetails}>
+                      <Text style={styles.paymentMethodLabel}>Clearpay</Text>
+                      <Text style={styles.paymentMethodDescription}>
+                        Pay in 4 interest-free installments
+                      </Text>
+                    </View>
+                    <Image
+                      source={require('../assets/images/clearpay-logo.png')}
+                      style={[styles.paymentMethodIcon, {width: 40}]}
+                      resizeMode="contain"
+                    />
+                  </Pressable>
+                </>
+              )}
             </View>
 
             {/* {selectedPaymentMethod === 'card' && (
@@ -2717,7 +2910,9 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: {width: 0, height: 3},
+    elevation: 4, // Android shadow
+    marginVertical: 16,
   },
 
   expressButton: {
@@ -2919,12 +3114,14 @@ const styles = StyleSheet.create({
   paymentMethod: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: colors.lightGrey,
     borderRadius: 4,
-    marginBottom: 12,
+    marginBottom: 8,
     backgroundColor: colors.white,
+    minHeight: 64, // Reduced from default
   },
   paymentMethodSelected: {
     borderColor: colors.gold,
@@ -2933,7 +3130,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   paymentMethodLabel: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
     color: colors.darkText,
   },

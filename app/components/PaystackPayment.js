@@ -14,7 +14,7 @@ import { useStore } from '../../context/store';
 import { colors, fontFamily, spacing, borderRadius, shadows } from '../../theme';
 
 // Paystack configuration - should be set in your environment variables
-const PAYSTACK_PUBLIC_KEY = process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY;
+const PAYSTACK_PUBLIC_KEY = process.env.PAYSTACK_PUBLIC_KEY;
 
 if (!PAYSTACK_PUBLIC_KEY) {
   console.warn('Paystack public key is not configured. Paystack payments will not work.');
@@ -38,6 +38,17 @@ const PaystackPayment = ({
   disabled = false,
   style = {}
 }) => {
+  // This effect will trigger the payment when the component mounts
+  useEffect(() => {
+    if (!disabled) {
+      handlePaystackPayment();
+    }
+    
+    // Cleanup function to handle component unmount
+    return () => {
+      // Any cleanup if needed when component unmounts
+    };
+  }, [disabled]);
   const { getCheckoutConfiguration, selectedCountry } = useCurrency();
   const { cart } = useStore();
   const [isLoading, setIsLoading] = useState(false);
@@ -90,6 +101,31 @@ const PaystackPayment = ({
       }
     };
   }, [isNigeria]);
+
+  const verifyPayment = async (reference) => {
+    try {
+      const response = await fetch('/api/verify-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reference }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log('Payment verified successfully:', data);
+        return { success: true, data };
+      } else {
+        console.error('Payment verification failed:', data.message);
+        return { success: false, error: data.message };
+      }
+    } catch (error) {
+      console.error('Error verifying payment:', error);
+      return { success: false, error: 'Failed to verify payment' };
+    }
+  };
 
   const handlePaystackPayment = useCallback(async () => {
     if (!isNigeria) {
@@ -152,25 +188,54 @@ const PaystackPayment = ({
               }
             ]
           },
-          callback: function(response) {
+          callback: async function(response) {
             console.log('Paystack callback:', response);
             setIsLoading(false);
             
             if (response.status === 'success') {
-              console.log('Payment successful, reference:', response.reference);
-              onSuccess?.({
-                reference: response.reference,
-                status: 'success',
-                paymentMethod: 'paystack',
-                transactionId: response.transaction
-              });
+              console.log('Payment successful, verifying...', response.reference);
+              
+              try {
+                // Verify the payment on your server
+                const verification = await verifyPayment(response.reference);
+                
+                if (verification.success) {
+                  console.log('Payment verified, reference:', response.reference);
+                  onSuccess?.({
+                    reference: response.reference,
+                    status: 'success',
+                    paymentMethod: 'paystack',
+                    transactionId: response.transaction,
+                    verified: true,
+                    verificationData: verification.data
+                  });
+                } else {
+                  const errorMsg = verification.error || 'Payment verification failed';
+                  console.error('Payment verification failed:', errorMsg);
+                  onError?.({
+                    message: errorMsg,
+                    response,
+                    paymentMethod: 'paystack',
+                    requiresVerification: true
+                  });
+                }
+              } catch (verificationError) {
+                console.error('Error during payment verification:', verificationError);
+                onError?.({
+                  message: 'Error verifying payment',
+                  error: verificationError,
+                  paymentMethod: 'paystack',
+                  requiresVerification: true
+                });
+              }
             } else {
               const errorMsg = response.message || 'Payment was not completed';
               console.error('Payment failed:', errorMsg);
               onError?.({
                 message: errorMsg,
                 response,
-                paymentMethod: 'paystack'
+                paymentMethod: 'paystack',
+                requiresVerification: false
               });
             }
           },
