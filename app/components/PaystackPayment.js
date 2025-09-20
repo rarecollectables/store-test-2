@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,23 +13,6 @@ import { FontAwesome } from '@expo/vector-icons';
 import { useCurrency } from '../../context/currency';
 import { useStore } from '../../context/store';
 import { colors, fontFamily, spacing, borderRadius, shadows } from '../../theme';
-
-// Paystack configuration - should be set in your environment variables
-const PAYSTACK_PUBLIC_KEY = process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY || 
-  process.env.PAYSTACK_PUBLIC_KEY || 
-  process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 
-  'pk_test_yourtestkeyhere'; // Replace with your actual test key for development
-
-// Log the key being used (with partial masking for security)
-if (PAYSTACK_PUBLIC_KEY) {
-  const maskedKey = PAYSTACK_PUBLIC_KEY.substring(0, 8) + '...' + 
-    (PAYSTACK_PUBLIC_KEY.length > 12 ? PAYSTACK_PUBLIC_KEY.substring(PAYSTACK_PUBLIC_KEY.length - 4) : '');
-  console.log('Using Paystack key:', maskedKey);
-}
-
-if (!PAYSTACK_PUBLIC_KEY) {
-  console.warn('Paystack public key is not configured. Paystack payments will not work.');
-}
 
 // Only allow Paystack for Nigeria
 const ALLOWED_COUNTRY_CODE = 'NG';
@@ -49,155 +32,17 @@ const PaystackPayment = ({
   disabled = false,
   style = {}
 }) => {
-  // This effect will trigger the payment when the component mounts
-  useEffect(() => {
-    if (!disabled) {
-      handlePaystackPayment();
-    }
-    
-    // Cleanup function to handle component unmount
-    return () => {
-      // Any cleanup if needed when component unmounts
-    };
-  }, [disabled]);
-  const { getCheckoutConfiguration, selectedCountry } = useCurrency();
+  const { selectedCountry } = useCurrency();
   const { cart } = useStore();
   const [isLoading, setIsLoading] = useState(false);
-  const [paystackLoaded, setPaystackLoaded] = useState(false);
   const [error, setError] = useState(null);
 
   // Check if Paystack should be enabled for the current country
   const isNigeria = selectedCountry === ALLOWED_COUNTRY_CODE;
   
-  // Get converted amount for Nigeria
-  const checkoutConfig = getCheckoutConfiguration(amount);
+  // Note: `amount` is expected to already be in NGN (not GBP)
 
-  // Load Paystack script for web - only for Nigeria
-  useEffect(() => {
-    // Only load Paystack for web and Nigeria
-    if (Platform.OS !== 'web' || !isNigeria) {
-      return;
-    }
-
-    console.log('Attempting to load Paystack script...');
-    
-    // First check if Paystack is already available in window
-    if (window.PaystackPop) {
-      console.log('Paystack already available in window');
-      setPaystackLoaded(true);
-      return;
-    }
-    
-    // Check if script is already loaded
-    const existingScript = document.querySelector('script[src*="paystack"], script[src*="Paystack"]');
-    if (existingScript) {
-      console.log('Paystack script already exists in document');
-      setPaystackLoaded(true);
-      return;
-    }
-
-    // Define multiple possible script sources to try
-    const scriptSources = [
-      '/scripts/paystack-inline.js', // Local version (preferred for reliability)
-      'https://js.paystack.co/v1/inline.js',
-      'https://cdn.paystack.com/v1/inline.js', // Alternative CDN if primary fails
-    ];
-    
-    // Function to try loading from the next source
-    const tryLoadScript = (sourceIndex = 0) => {
-      if (sourceIndex >= scriptSources.length) {
-        console.error('All Paystack script sources failed');
-        setError('Failed to load payment system. Please try again later.');
-        setPaystackLoaded(false);
-        onError?.({ message: 'Failed to load Paystack script from all sources. Please contact support.' });
-        return;
-      }
-      
-      try {
-        const script = document.createElement('script');
-        script.src = scriptSources[sourceIndex];
-        script.async = true;
-        script.id = 'paystack-script';
-        script.crossOrigin = 'anonymous'; // Add crossOrigin attribute
-        
-        script.onload = () => {
-          console.log(`Paystack script loaded successfully from ${scriptSources[sourceIndex]}`);
-          setPaystackLoaded(true);
-        };
-        
-        script.onerror = (error) => {
-          console.error(`Failed to load Paystack script from ${scriptSources[sourceIndex]}:`, error);
-          // Try the next source - only try to remove if it was actually appended
-          try {
-            // Check if the script is actually in the document before removing
-            if (document.body.contains(script)) {
-              document.body.removeChild(script);
-            }
-          } catch (removeError) {
-            console.error('Error removing script:', removeError);
-          }
-          tryLoadScript(sourceIndex + 1);
-        };
-        
-        document.body.appendChild(script);
-        console.log(`Attempting to load Paystack script from ${scriptSources[sourceIndex]}`);
-      } catch (loadError) {
-        console.error('Error setting up Paystack script:', loadError);
-        tryLoadScript(sourceIndex + 1);
-      }
-    };
-    
-    // Start trying to load from the first source
-    tryLoadScript();
-
-    return () => {
-      // Cleanup script on unmount or when country changes
-      try {
-        const scriptToRemove = document.getElementById('paystack-script');
-        if (scriptToRemove && document.body.contains(scriptToRemove)) {
-          document.body.removeChild(scriptToRemove);
-          console.log('Paystack script removed from document');
-        }
-      } catch (error) {
-        console.error('Error cleaning up Paystack script:', error);
-      }
-    };
-  }, [isNigeria, onError]);
-
-  // Function to verify payment using our Netlify function
-  const verifyPayment = async (reference) => {
-    try {
-      console.log('Verifying payment with reference:', reference);
-      
-      // Use our Netlify function for verification
-      const response = await fetch('/.netlify/functions/verify-paystack', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ reference }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Verification failed with status ${response.status}:`, errorText);
-        return { success: false, error: `Server error (${response.status})` };
-      }
-
-      const data = await response.json();
-      
-      if (data.success) {
-        console.log('Payment verified successfully:', data);
-        return { success: true, data: data.data };
-      } else {
-        console.error('Payment verification failed:', data.error || 'Unknown error');
-        return { success: false, error: data.error || 'Payment verification failed' };
-      }
-    } catch (error) {
-      console.error('Error verifying payment:', error);
-      return { success: false, error: 'Failed to verify payment' };
-    }
-  };
+  // Verification is now handled by the checkout-success page
 
   const handlePaystackPayment = useCallback(async () => {
     if (!isNigeria) {
@@ -217,8 +62,8 @@ const PaystackPayment = ({
     setError(null);
 
     try {
-      // Convert amount to kobo (Paystack uses kobo, not naira)
-      const amountInKobo = Math.round(checkoutConfig.amount * 100);
+      // Treat amount as already in NGN; convert to kobo for Paystack
+      const amountInKobo = Math.round(Number(amount) * 100);
       const transactionRef = `RC_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
       
       console.log('Initiating server-side Paystack payment:', {
@@ -280,7 +125,7 @@ const PaystackPayment = ({
       setError(error.message || 'Failed to process payment');
       onError?.({ message: error.message || 'Failed to process payment' });
     }
-  }, [isNigeria, email, amount, checkoutConfig, cart, onError]);
+  }, [isNigeria, email, amount, cart, onError]);
 
   // Don't render anything if not Nigeria
   if (!isNigeria) {
@@ -298,12 +143,12 @@ const PaystackPayment = ({
     );
   }
 
-  // Show loading state while Paystack loads
-  if (!paystackLoaded) {
+  // Show loading state while payment is processing
+  if (isLoading) {
     return (
       <View style={[styles.container, style, styles.loadingContainer]}>
         <ActivityIndicator size="small" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading payment options...</Text>
+        <Text style={styles.loadingText}>Processing payment...</Text>
       </View>
     );
   }
@@ -317,7 +162,7 @@ const PaystackPayment = ({
           pressed && styles.paystackButtonPressed
         ]}
         onPress={handlePaystackPayment}
-        disabled={disabled || isLoading || !paystackLoaded}
+        disabled={disabled || isLoading}
         accessibilityLabel="Pay with Paystack"
         accessibilityRole="button"
         accessibilityState={{ busy: isLoading }}
@@ -330,13 +175,8 @@ const PaystackPayment = ({
               color={colors.white} 
               style={styles.icon}
             />
-            <View>
-              <Text style={styles.buttonText}>
-                Pay with Paystack
-              </Text>
-              <Text style={styles.amountText}>
-                {checkoutConfig.formatted}
-              </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.buttonText}>Pay</Text>
             </View>
           </View>
           
@@ -373,7 +213,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   paystackButton: {
-    backgroundColor: '#00C851', // Paystack green
+    backgroundColor: colors.gold, // Use theme color
     borderRadius: borderRadius.medium,
     padding: spacing.medium,
     ...shadows.medium,
@@ -400,14 +240,8 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: colors.white,
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: fontFamily.semiBold,
-  },
-  amountText: {
-    color: colors.white,
-    fontSize: 14,
-    opacity: 0.9,
-    marginTop: 2,
   },
   loadingContainer: {
     flexDirection: 'row',
