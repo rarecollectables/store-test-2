@@ -6,7 +6,8 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
-  Platform
+  Platform,
+  Linking
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { useCurrency } from '../../context/currency';
@@ -163,9 +164,13 @@ const PaystackPayment = ({
     };
   }, [isNigeria, onError]);
 
+  // Function to verify payment using our Netlify function
   const verifyPayment = async (reference) => {
     try {
-      const response = await fetch('/api/verify-payment', {
+      console.log('Verifying payment with reference:', reference);
+      
+      // Use our Netlify function for verification
+      const response = await fetch('/.netlify/functions/verify-paystack', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -173,14 +178,20 @@ const PaystackPayment = ({
         body: JSON.stringify({ reference }),
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Verification failed with status ${response.status}:`, errorText);
+        return { success: false, error: `Server error (${response.status})` };
+      }
+
       const data = await response.json();
       
       if (data.success) {
         console.log('Payment verified successfully:', data);
-        return { success: true, data };
+        return { success: true, data: data.data };
       } else {
-        console.error('Payment verification failed:', data.message);
-        return { success: false, error: data.message };
+        console.error('Payment verification failed:', data.error || 'Unknown error');
+        return { success: false, error: data.error || 'Payment verification failed' };
       }
     } catch (error) {
       console.error('Error verifying payment:', error);
@@ -202,22 +213,6 @@ const PaystackPayment = ({
       return;
     }
 
-    if (!paystackLoaded) {
-      const errorMsg = 'Payment system is not ready. Please try again.';
-      console.error(errorMsg);
-      Alert.alert('Payment Error', errorMsg);
-      onError?.({ message: errorMsg });
-      return;
-    }
-
-    if (!PAYSTACK_PUBLIC_KEY) {
-      const errorMsg = 'Payment processing is not properly configured. Please contact support.';
-      console.error('Paystack public key is not configured');
-      Alert.alert('Configuration Error', errorMsg);
-      onError?.({ message: errorMsg });
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
 
@@ -226,158 +221,66 @@ const PaystackPayment = ({
       const amountInKobo = Math.round(checkoutConfig.amount * 100);
       const transactionRef = `RC_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
       
-      console.log('Initiating Paystack payment:', {
+      console.log('Initiating server-side Paystack payment:', {
         amount: amountInKobo,
         email,
         reference: transactionRef,
         itemCount: Array.isArray(cart) ? cart.length : 0
       });
 
-      // Check if PaystackPop is available in window
-      if (Platform.OS === 'web') {
-        if (!window.PaystackPop) {
-          throw new Error('Paystack is not available. The script may not have loaded correctly.');
-        }
-        
-        console.log('Setting up Paystack payment with config:', {
-          key: PAYSTACK_PUBLIC_KEY ? `${PAYSTACK_PUBLIC_KEY.substring(0, 8)}...` : 'MISSING',
+      // Use our Netlify function to initialize the payment
+      const response = await fetch('/.netlify/functions/initialize-paystack', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           email,
           amount: amountInKobo,
-          currency: 'NGN',
-          ref: transactionRef
-        });
-        
-        // Define callback and onClose functions separately before passing to setup
-        const paystackCallback = function(response) {
-          console.log('Paystack callback received:', response);
-          setIsLoading(false);
-          
-          if (response.status === 'success') {
-            console.log('Payment successful, reference:', response.reference);
-            
-            // Call onSuccess with the reference
-            onSuccess?.(response.reference);
-            
-            // Optionally verify the payment server-side
-            verifyPayment(response.reference)
-              .then(verification => {
-                if (verification.success) {
-                  console.log('Payment verified successfully');
-                } else {
-                  const errorMsg = verification.error || 'Payment verification failed';
-                  console.error('Payment verification failed:', errorMsg);
-                }
-              })
-              .catch(error => {
-                console.error('Error verifying payment:', error);
-              });
-          } else {
-            const errorMsg = response.message || 'Payment was not successful';
-            console.error('Payment failed:', errorMsg);
-            onError?.({ 
-              message: errorMsg,
-              response,
-              paymentMethod: 'paystack',
-              requiresVerification: false
-            });
+          reference: transactionRef,
+          metadata: {
+            cart_items: Array.isArray(cart) ? cart.length : 0
           }
-        };
-        
-        const paystackClose = function() {
-          console.log('Payment modal closed');
-          setIsLoading(false);
-          onCancel?.();
-        };
-        
-        // Implement a simpler, more robust Paystack integration
-        try {
-          // Log the configuration we're using for Paystack with detailed information
-          console.log('Paystack configuration details:', {
-            key: PAYSTACK_PUBLIC_KEY ? `${PAYSTACK_PUBLIC_KEY.substring(0, 8)}...${PAYSTACK_PUBLIC_KEY.substring(PAYSTACK_PUBLIC_KEY.length - 4)}` : 'MISSING',
-            email: email || 'MISSING',
-            amount: amountInKobo || 'MISSING',
-            currency: 'NGN',
-            ref: transactionRef || 'MISSING',
-            keyType: PAYSTACK_PUBLIC_KEY?.startsWith('pk_') ? 'Valid public key format' : 'INVALID KEY FORMAT',
-            emailValid: email && email.includes('@') ? 'Valid email format' : 'INVALID EMAIL FORMAT',
-            amountValid: typeof amountInKobo === 'number' && amountInKobo > 0 ? 'Valid amount' : 'INVALID AMOUNT'
-          });
-          
-          // Create a minimal configuration object with only required fields
-          const config = {
-            key: PAYSTACK_PUBLIC_KEY,
-            email: email,
-            amount: amountInKobo,
-            currency: 'NGN',
-            ref: transactionRef,
-            // Define callback and onClose directly in the config
-            callback: function(response) {
-              console.log('Payment callback received:', response);
-              setIsLoading(false);
-              if (response && response.status === 'success' && response.reference) {
-                onSuccess?.(response.reference);
-              } else {
-                onError?.({ message: 'Payment was not successful' });
-              }
-            },
-            onClose: function() {
-              console.log('Payment window closed');
-              setIsLoading(false);
-              onCancel?.();
-            }
-          };
-          
-          // Create the handler with minimal required fields
-          const handler = window.PaystackPop.setup(config);
-          
-          // Open the payment iframe
-          console.log('Opening Paystack payment...');
-          handler.openIframe();
-        } catch (setupError) {
-          console.error('Error setting up Paystack:', setupError);
-          setIsLoading(false);
-          onError?.({ message: 'Failed to initialize payment: ' + setupError.message });
-        }
-        
-        // Return early to avoid the code below
-        return;
-        
-        // The code below is kept for reference but will not execute
-        const unusedHandler = {
-          key: PAYSTACK_PUBLIC_KEY,
-          email: email,
-          amount: amountInKobo,
-          currency: 'NGN',
-          ref: transactionRef,
-          callback: paystackCallback,
-          onClose: paystackClose
-        };
+        }),
+      });
 
-        // Open the payment modal
-        try {
-          console.log('Opening Paystack iframe...');
-          handler.openIframe();
-        } catch (iframeError) {
-          console.error('Error opening Paystack iframe:', iframeError);
-          setIsLoading(false);
-          throw new Error(`Failed to open Paystack payment: ${iframeError.message}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Server error (${response.status})`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.data.authorizationUrl) {
+        console.log('Payment initialized successfully, redirecting to:', data.data.authorizationUrl);
+        
+        // For web, redirect to the Paystack hosted checkout page
+        if (Platform.OS === 'web') {
+          // Store the reference for verification after redirect
+          localStorage.setItem('paystackReference', data.data.reference);
+          
+          // Redirect to the Paystack checkout page
+          window.location.href = data.data.authorizationUrl;
+        } else {
+          // For mobile, open the URL in the device browser
+          const supported = await Linking.canOpenURL(data.data.authorizationUrl);
+          
+          if (supported) {
+            await Linking.openURL(data.data.authorizationUrl);
+          } else {
+            throw new Error(`Cannot open URL: ${data.data.authorizationUrl}`);
+          }
         }
       } else {
-        console.error('Paystack is not available in window');
-        throw new Error('Paystack is not available. Please ensure you are using a supported browser.');
+        throw new Error('Failed to initialize payment');
       }
     } catch (error) {
       console.error('Paystack payment error:', error);
       setIsLoading(false);
-      const errorMsg = error.message || 'Failed to initialize payment';
-      setError(errorMsg);
-      onError?.({
-        message: errorMsg,
-        error,
-        paymentMethod: 'paystack'
-      });
+      setError(error.message || 'Failed to process payment');
+      onError?.({ message: error.message || 'Failed to process payment' });
     }
-  }, [amount, checkoutConfig.amount, email, isNigeria, onCancel, onError, onSuccess, paystackLoaded, cart]);
+  }, [isNigeria, email, amount, checkoutConfig, cart, onError]);
 
   // Don't render anything if not Nigeria
   if (!isNigeria) {

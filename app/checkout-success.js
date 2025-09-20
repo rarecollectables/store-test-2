@@ -52,8 +52,110 @@ export default function CheckoutSuccess() {
         const paymentIntentId = urlParams.get('payment_intent');
         const redirectStatus = urlParams.get('redirect_status');
         const sessionId = urlParams.get('session_id');
+        const reference = urlParams.get('reference'); // Paystack reference
+        const trxref = urlParams.get('trxref'); // Alternative Paystack reference
         
-        console.log('URL Parameters:', { paymentIntentId, redirectStatus, sessionId, queryString });
+        console.log('URL Parameters:', { 
+          paymentIntentId, 
+          redirectStatus, 
+          sessionId, 
+          reference, 
+          trxref, 
+          queryString 
+        });
+        
+        // Check for Paystack payment first
+        if (reference || trxref) {
+          console.log('Paystack payment detected, verifying...');
+          const paystackReference = reference || trxref;
+          
+          try {
+            // Verify the payment using our Netlify function
+            const verificationResponse = await fetch('/.netlify/functions/verify-paystack', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ reference: paystackReference }),
+            });
+            
+            if (!verificationResponse.ok) {
+              throw new Error(`Verification failed with status ${verificationResponse.status}`);
+            }
+            
+            const verificationData = await verificationResponse.json();
+            console.log('Paystack verification result:', verificationData);
+            
+            if (verificationData.success) {
+              // Payment was successful
+              const paymentData = verificationData.data;
+              
+              // Get stored order data from localStorage
+              let orderData = null;
+              if (typeof window !== 'undefined' && window.localStorage) {
+                const storedOrder = window.localStorage.getItem('currentOrder');
+                if (storedOrder) {
+                  orderData = JSON.parse(storedOrder);
+                }
+              }
+              
+              // Create order object
+              const newOrder = {
+                id: `ORD-${Date.now().toString().slice(-6)}`,
+                date: new Date().toISOString(),
+                status: 'Confirmed',
+                total: paymentData.amount / 100, // Convert from kobo to naira
+                items: orderData?.items || [],
+                paymentMethod: 'Paystack',
+                paymentReference: paymentData.reference,
+                email: paymentData.customer?.email || params.email
+              };
+              
+              // Save order to user's order history
+              if (typeof window !== 'undefined' && window.localStorage) {
+                const email = newOrder.email;
+                if (email) {
+                  // Save by email
+                  const key = `ORDERS_EMAIL_${email.toLowerCase()}`;
+                  const existingOrders = JSON.parse(window.localStorage.getItem(key) || '[]');
+                  existingOrders.unshift(newOrder);
+                  window.localStorage.setItem(key, JSON.stringify(existingOrders));
+                }
+                
+                // Also save by device key as fallback
+                const deviceKey = `ORDERS_${getDeviceKey()}`;
+                const deviceOrders = JSON.parse(window.localStorage.getItem(deviceKey) || '[]');
+                deviceOrders.unshift(newOrder);
+                window.localStorage.setItem(deviceKey, JSON.stringify(deviceOrders));
+                
+                // Clear current order
+                window.localStorage.removeItem('currentOrder');
+              }
+              
+              // Set order for display
+              setOrder(newOrder);
+              
+              // Track purchase event
+              trackEvent({
+                eventType: 'purchase',
+                value: newOrder.total,
+                currency: 'NGN',
+                items: newOrder.items
+              });
+              
+              // Clear cart
+              clearCart();
+              
+              return; // Exit early as we've handled the Paystack payment
+            } else {
+              throw new Error(verificationData.error || 'Payment verification failed');
+            }
+          } catch (paystackError) {
+            console.error('Error verifying Paystack payment:', paystackError);
+            setError(`There was an issue verifying your Paystack payment: ${paystackError.message}`);
+            return; // Exit early as we've handled the error
+          }
+        }
         
         // Handle both payment_intent flow and session_id (Stripe Checkout) flow
         if ((paymentIntentId && redirectStatus === 'succeeded') || sessionId) {
