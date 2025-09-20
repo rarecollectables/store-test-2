@@ -14,7 +14,10 @@ import { useStore } from '../../context/store';
 import { colors, fontFamily, spacing, borderRadius, shadows } from '../../theme';
 
 // Paystack configuration - should be set in your environment variables
-const PAYSTACK_PUBLIC_KEY = process.env.PAYSTACK_PUBLIC_KEY;
+const PAYSTACK_PUBLIC_KEY = process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY || 
+  process.env.PAYSTACK_PUBLIC_KEY || 
+  process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 
+  'pk_test_yourtestkeyhere'; // Replace with your actual test key for development
 
 if (!PAYSTACK_PUBLIC_KEY) {
   console.warn('Paystack public key is not configured. Paystack payments will not work.');
@@ -68,39 +71,56 @@ const PaystackPayment = ({
       return;
     }
 
+    console.log('Attempting to load Paystack script...');
+    
     // Check if script is already loaded
-    if (document.querySelector('script[src*="paystack"], script[src*="Paystack"]')) {
+    const existingScript = document.querySelector('script[src*="paystack"], script[src*="Paystack"]');
+    if (existingScript) {
+      console.log('Paystack script already exists in document');
       setPaystackLoaded(true);
       return;
     }
 
-    const script = document.createElement('script');
-    script.src = 'https://js.paystack.co/v1/inline.js';
-    script.async = true;
-    script.onload = () => {
-      console.log('Paystack script loaded successfully');
-      setPaystackLoaded(true);
-    };
-    
-    script.onerror = (error) => {
-      console.error('Failed to load Paystack script:', error);
-      setError('Failed to load payment system. Please try again later.');
+    try {
+      const script = document.createElement('script');
+      script.src = 'https://js.paystack.co/v1/inline.js';
+      script.async = true;
+      script.id = 'paystack-script';
+      
+      script.onload = () => {
+        console.log('Paystack script loaded successfully');
+        setPaystackLoaded(true);
+      };
+      
+      script.onerror = (error) => {
+        console.error('Failed to load Paystack script:', error);
+        setError('Failed to load payment system. Please try again later.');
+        setPaystackLoaded(false);
+        onError?.({ message: 'Failed to load Paystack script. Please refresh the page and try again.' });
+      };
+      
+      document.body.appendChild(script);
+      console.log('Paystack script appended to document body');
+    } catch (loadError) {
+      console.error('Error setting up Paystack script:', loadError);
+      setError('Failed to set up payment system. Please try again later.');
       setPaystackLoaded(false);
-    };
-    
-    document.body.appendChild(script);
+      onError?.({ message: 'Failed to set up Paystack script. Please refresh the page and try again.' });
+    }
 
     return () => {
       // Cleanup script on unmount or when country changes
       try {
-        if (document.body.contains(script)) {
-          document.body.removeChild(script);
+        const scriptToRemove = document.getElementById('paystack-script');
+        if (scriptToRemove && document.body.contains(scriptToRemove)) {
+          document.body.removeChild(scriptToRemove);
+          console.log('Paystack script removed from document');
         }
       } catch (error) {
         console.error('Error cleaning up Paystack script:', error);
       }
     };
-  }, [isNigeria]);
+  }, [isNigeria, onError]);
 
   const verifyPayment = async (reference) => {
     try {
@@ -172,7 +192,62 @@ const PaystackPayment = ({
         itemCount: Array.isArray(cart) ? cart.length : 0
       });
 
-      if (Platform.OS === 'web' && window.PaystackPop) {
+      // Check if PaystackPop is available in window
+      if (Platform.OS === 'web') {
+        if (!window.PaystackPop) {
+          throw new Error('Paystack is not available. The script may not have loaded correctly.');
+        }
+        
+        console.log('Setting up Paystack payment with config:', {
+          key: PAYSTACK_PUBLIC_KEY ? `${PAYSTACK_PUBLIC_KEY.substring(0, 8)}...` : 'MISSING',
+          email,
+          amount: amountInKobo,
+          currency: 'NGN',
+          ref: transactionRef
+        });
+        
+        // Define callback and onClose functions separately before passing to setup
+        const paystackCallback = function(response) {
+          console.log('Paystack callback received:', response);
+          setIsLoading(false);
+          
+          if (response.status === 'success') {
+            console.log('Payment successful, reference:', response.reference);
+            
+            // Call onSuccess with the reference
+            onSuccess?.(response.reference);
+            
+            // Optionally verify the payment server-side
+            verifyPayment(response.reference)
+              .then(verification => {
+                if (verification.success) {
+                  console.log('Payment verified successfully');
+                } else {
+                  const errorMsg = verification.error || 'Payment verification failed';
+                  console.error('Payment verification failed:', errorMsg);
+                }
+              })
+              .catch(error => {
+                console.error('Error verifying payment:', error);
+              });
+          } else {
+            const errorMsg = response.message || 'Payment was not successful';
+            console.error('Payment failed:', errorMsg);
+            onError?.({ 
+              message: errorMsg,
+              response,
+              paymentMethod: 'paystack',
+              requiresVerification: false
+            });
+          }
+        };
+        
+        const paystackClose = function() {
+          console.log('Payment modal closed');
+          setIsLoading(false);
+          onCancel?.();
+        };
+        
         const handler = window.PaystackPop.setup({
           key: PAYSTACK_PUBLIC_KEY,
           email: email,
@@ -188,67 +263,22 @@ const PaystackPayment = ({
               }
             ]
           },
-          callback: async function(response) {
-            console.log('Paystack callback:', response);
-            setIsLoading(false);
-            
-            if (response.status === 'success') {
-              console.log('Payment successful, verifying...', response.reference);
-              
-              try {
-                // Verify the payment on your server
-                const verification = await verifyPayment(response.reference);
-                
-                if (verification.success) {
-                  console.log('Payment verified, reference:', response.reference);
-                  onSuccess?.({
-                    reference: response.reference,
-                    status: 'success',
-                    paymentMethod: 'paystack',
-                    transactionId: response.transaction,
-                    verified: true,
-                    verificationData: verification.data
-                  });
-                } else {
-                  const errorMsg = verification.error || 'Payment verification failed';
-                  console.error('Payment verification failed:', errorMsg);
-                  onError?.({
-                    message: errorMsg,
-                    response,
-                    paymentMethod: 'paystack',
-                    requiresVerification: true
-                  });
-                }
-              } catch (verificationError) {
-                console.error('Error during payment verification:', verificationError);
-                onError?.({
-                  message: 'Error verifying payment',
-                  error: verificationError,
-                  paymentMethod: 'paystack',
-                  requiresVerification: true
-                });
-              }
-            } else {
-              const errorMsg = response.message || 'Payment was not completed';
-              console.error('Payment failed:', errorMsg);
-              onError?.({
-                message: errorMsg,
-                response,
-                paymentMethod: 'paystack',
-                requiresVerification: false
-              });
-            }
-          },
-          onClose: function() {
-            console.log('Paystack payment window closed by user');
-            setIsLoading(false);
-            onCancel?.();
-          }
+          callback: paystackCallback,
+          onClose: paystackClose
         });
 
-        handler.openIframe();
+        // Open the payment modal
+        try {
+          console.log('Opening Paystack iframe...');
+          handler.openIframe();
+        } catch (iframeError) {
+          console.error('Error opening Paystack iframe:', iframeError);
+          setIsLoading(false);
+          throw new Error(`Failed to open Paystack payment: ${iframeError.message}`);
+        }
       } else {
-        throw new Error('Paystack is not available');
+        console.error('Paystack is not available in window');
+        throw new Error('Paystack is not available. Please ensure you are using a supported browser.');
       }
     } catch (error) {
       console.error('Paystack payment error:', error);
