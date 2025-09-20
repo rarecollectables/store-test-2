@@ -19,6 +19,13 @@ const PAYSTACK_PUBLIC_KEY = process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY ||
   process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 
   'pk_test_yourtestkeyhere'; // Replace with your actual test key for development
 
+// Log the key being used (with partial masking for security)
+if (PAYSTACK_PUBLIC_KEY) {
+  const maskedKey = PAYSTACK_PUBLIC_KEY.substring(0, 8) + '...' + 
+    (PAYSTACK_PUBLIC_KEY.length > 12 ? PAYSTACK_PUBLIC_KEY.substring(PAYSTACK_PUBLIC_KEY.length - 4) : '');
+  console.log('Using Paystack key:', maskedKey);
+}
+
 if (!PAYSTACK_PUBLIC_KEY) {
   console.warn('Paystack public key is not configured. Paystack payments will not work.');
 }
@@ -282,21 +289,62 @@ const PaystackPayment = ({
           onCancel?.();
         };
         
-        const handler = window.PaystackPop.setup({
+        // Implement a simpler, more robust Paystack integration
+        try {
+          // Log the configuration we're using for Paystack
+          console.log('Paystack configuration:', {
+            email,
+            amount: amountInKobo,
+            currency: 'NGN',
+            ref: transactionRef
+          });
+          
+          // Create a minimal configuration object with only required fields
+          const config = {
+            key: PAYSTACK_PUBLIC_KEY,
+            email: email,
+            amount: amountInKobo,
+            currency: 'NGN',
+            ref: transactionRef,
+            // Define callback and onClose directly in the config
+            callback: function(response) {
+              console.log('Payment callback received:', response);
+              setIsLoading(false);
+              if (response && response.status === 'success' && response.reference) {
+                onSuccess?.(response.reference);
+              } else {
+                onError?.({ message: 'Payment was not successful' });
+              }
+            },
+            onClose: function() {
+              console.log('Payment window closed');
+              setIsLoading(false);
+              onCancel?.();
+            }
+          };
+          
+          // Create the handler with minimal required fields
+          const handler = window.PaystackPop.setup(config);
+          
+          // Open the payment iframe
+          console.log('Opening Paystack payment...');
+          handler.openIframe();
+        } catch (setupError) {
+          console.error('Error setting up Paystack:', setupError);
+          setIsLoading(false);
+          onError?.({ message: 'Failed to initialize payment: ' + setupError.message });
+        }
+        
+        // Return early to avoid the code below
+        return;
+        
+        // The code below is kept for reference but will not execute
+        const unusedHandler = {
           key: PAYSTACK_PUBLIC_KEY,
           email: email,
           amount: amountInKobo,
           currency: 'NGN',
           ref: transactionRef,
-          metadata: {
-            custom_fields: [
-              {
-                display_name: "Cart Items",
-                variable_name: "cart_items",
-                value: Array.isArray(cart) ? cart.length : 0
-              }
-            ]
-          },
           callback: paystackCallback,
           onClose: paystackClose
         });
