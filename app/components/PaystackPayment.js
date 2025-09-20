@@ -90,9 +90,9 @@ const PaystackPayment = ({
 
     // Define multiple possible script sources to try
     const scriptSources = [
+      '/scripts/paystack-inline.js', // Local version (preferred for reliability)
       'https://js.paystack.co/v1/inline.js',
       'https://cdn.paystack.com/v1/inline.js', // Alternative CDN if primary fails
-      '/paystack-inline.js' // Local fallback if available
     ];
     
     // Function to try loading from the next source
