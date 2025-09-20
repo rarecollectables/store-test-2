@@ -73,6 +73,13 @@ const PaystackPayment = ({
 
     console.log('Attempting to load Paystack script...');
     
+    // First check if Paystack is already available in window
+    if (window.PaystackPop) {
+      console.log('Paystack already available in window');
+      setPaystackLoaded(true);
+      return;
+    }
+    
     // Check if script is already loaded
     const existingScript = document.querySelector('script[src*="paystack"], script[src*="Paystack"]');
     if (existingScript) {
@@ -81,32 +88,52 @@ const PaystackPayment = ({
       return;
     }
 
-    try {
-      const script = document.createElement('script');
-      script.src = 'https://js.paystack.co/v1/inline.js';
-      script.async = true;
-      script.id = 'paystack-script';
-      
-      script.onload = () => {
-        console.log('Paystack script loaded successfully');
-        setPaystackLoaded(true);
-      };
-      
-      script.onerror = (error) => {
-        console.error('Failed to load Paystack script:', error);
+    // Define multiple possible script sources to try
+    const scriptSources = [
+      'https://js.paystack.co/v1/inline.js',
+      'https://cdn.paystack.com/v1/inline.js', // Alternative CDN if primary fails
+      '/paystack-inline.js' // Local fallback if available
+    ];
+    
+    // Function to try loading from the next source
+    const tryLoadScript = (sourceIndex = 0) => {
+      if (sourceIndex >= scriptSources.length) {
+        console.error('All Paystack script sources failed');
         setError('Failed to load payment system. Please try again later.');
         setPaystackLoaded(false);
-        onError?.({ message: 'Failed to load Paystack script. Please refresh the page and try again.' });
-      };
+        onError?.({ message: 'Failed to load Paystack script from all sources. Please contact support.' });
+        return;
+      }
       
-      document.body.appendChild(script);
-      console.log('Paystack script appended to document body');
-    } catch (loadError) {
-      console.error('Error setting up Paystack script:', loadError);
-      setError('Failed to set up payment system. Please try again later.');
-      setPaystackLoaded(false);
-      onError?.({ message: 'Failed to set up Paystack script. Please refresh the page and try again.' });
-    }
+      try {
+        const script = document.createElement('script');
+        script.src = scriptSources[sourceIndex];
+        script.async = true;
+        script.id = 'paystack-script';
+        script.crossOrigin = 'anonymous'; // Add crossOrigin attribute
+        
+        script.onload = () => {
+          console.log(`Paystack script loaded successfully from ${scriptSources[sourceIndex]}`);
+          setPaystackLoaded(true);
+        };
+        
+        script.onerror = (error) => {
+          console.error(`Failed to load Paystack script from ${scriptSources[sourceIndex]}:`, error);
+          // Try the next source
+          document.body.removeChild(script);
+          tryLoadScript(sourceIndex + 1);
+        };
+        
+        document.body.appendChild(script);
+        console.log(`Attempting to load Paystack script from ${scriptSources[sourceIndex]}`);
+      } catch (loadError) {
+        console.error('Error setting up Paystack script:', loadError);
+        tryLoadScript(sourceIndex + 1);
+      }
+    };
+    
+    // Start trying to load from the first source
+    tryLoadScript();
 
     return () => {
       // Cleanup script on unmount or when country changes
