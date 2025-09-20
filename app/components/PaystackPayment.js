@@ -291,12 +291,16 @@ const PaystackPayment = ({
         
         // Implement a simpler, more robust Paystack integration
         try {
-          // Log the configuration we're using for Paystack
-          console.log('Paystack configuration:', {
-            email,
-            amount: amountInKobo,
+          // Log the configuration we're using for Paystack with detailed information
+          console.log('Paystack configuration details:', {
+            key: PAYSTACK_PUBLIC_KEY ? `${PAYSTACK_PUBLIC_KEY.substring(0, 8)}...${PAYSTACK_PUBLIC_KEY.substring(PAYSTACK_PUBLIC_KEY.length - 4)}` : 'MISSING',
+            email: email || 'MISSING',
+            amount: amountInKobo || 'MISSING',
             currency: 'NGN',
-            ref: transactionRef
+            ref: transactionRef || 'MISSING',
+            keyType: PAYSTACK_PUBLIC_KEY?.startsWith('pk_') ? 'Valid public key format' : 'INVALID KEY FORMAT',
+            emailValid: email && email.includes('@') ? 'Valid email format' : 'INVALID EMAIL FORMAT',
+            amountValid: typeof amountInKobo === 'number' && amountInKobo > 0 ? 'Valid amount' : 'INVALID AMOUNT'
           });
           
           // Create a minimal configuration object with only required fields
@@ -347,7 +351,7 @@ const PaystackPayment = ({
           ref: transactionRef,
           callback: paystackCallback,
           onClose: paystackClose
-        });
+        };
 
         // Open the payment modal
         try {
