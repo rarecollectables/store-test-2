@@ -497,10 +497,16 @@ export default function CheckoutScreen() {
       hasAddress: Boolean(address.line1),
       hasStripe: Boolean(stripe),
       hasNoClientSecret: !clientSecret,
+      isPaystackCountry: isPaystackCountry(),
+      selectedPaymentMethod
     });
 
-    // Create a new payment intent only when we have Stripe loaded, cart items, and user contact info
-    if (stripe && cart.length > 0 && contact.email && address.line1) {
+    // Check if the current country uses Paystack
+    const shouldUsePaystack = isPaystackCountry();
+    
+    // Create a new payment intent only when we have Stripe loaded, cart items, user contact info,
+    // and the selected country is NOT a Paystack country
+    if (stripe && cart.length > 0 && contact.email && address.line1 && !shouldUsePaystack) {
       const createPaymentIntent = async () => {
         try {
           setStripeLoading(true);
@@ -552,7 +558,7 @@ export default function CheckoutScreen() {
         createPaymentIntent();
       }
     }
-  }, [stripe, cart, clientSecret]);
+  }, [stripe, cart, clientSecret, isPaystackCountry, selectedPaymentMethod]);
 
   // This section was commented out as we're now handling payment intent creation in the useEffect above
 
@@ -640,11 +646,12 @@ export default function CheckoutScreen() {
           cart,
           customer_email: contact.email,
           contact_name: contact.name,
-          amount: Math.round(updatedTotal * 100),
-          shipping,
+          shipping_address: shipping,
+          // billing_address: billing,
           coupon: coupon,
           discountAmount: newDiscountAmount,
-          automatic_payment_methods: {enabled: true},
+          // automatic_payment_methods: {enabled: true},
+          payment_method_types: paymentMethodTypes, // 👈 send dynamic method
         };
 
         const intentResponse = await fetch(
@@ -1774,20 +1781,18 @@ export default function CheckoutScreen() {
             <PaystackPayment
               amount={parseFloat(calculateTotal())}
               email={contact.email}
-              onSuccess={(response) => {
-                console.log('Paystack payment successful:', response);
-                setShowPaystackButton(false);
-                handleCheckoutSuccess(contact.email, response.reference);
-              }}
+              onSuccess={(reference) => handleCheckoutSuccess(contact.email, reference)}
               onError={(error) => {
                 console.error('Paystack payment error:', error);
-                setShowPaystackButton(false);
-                Alert.alert('Payment Error', error.message || 'Payment failed. Please try again.');
+                setErrors({
+                  ...errors,
+                  payment: ['Payment failed. Please try again.'],
+                });
               }}
               onCancel={() => {
                 console.log('Paystack payment cancelled');
-                setShowPaystackButton(false);
               }}
+              disabled={!contact.email} // Only disable if email is missing
             />
           )}
           
@@ -3110,6 +3115,18 @@ const styles = StyleSheet.create({
   },
   paymentMethodsContainer: {
     marginBottom: 24,
+  },
+  paystackInfoContainer: {
+    backgroundColor: '#f8f4e5',
+    padding: 12,
+    borderRadius: 4,
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  paystackInfoText: {
+    color: colors.darkText,
+    fontSize: 14,
+    textAlign: 'center',
   },
   paymentMethod: {
     flexDirection: 'row',
