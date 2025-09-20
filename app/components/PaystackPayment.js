@@ -119,8 +119,15 @@ const PaystackPayment = ({
         
         script.onerror = (error) => {
           console.error(`Failed to load Paystack script from ${scriptSources[sourceIndex]}:`, error);
-          // Try the next source
-          document.body.removeChild(script);
+          // Try the next source - only try to remove if it was actually appended
+          try {
+            // Check if the script is actually in the document before removing
+            if (document.body.contains(script)) {
+              document.body.removeChild(script);
+            }
+          } catch (removeError) {
+            console.error('Error removing script:', removeError);
+          }
           tryLoadScript(sourceIndex + 1);
         };
         
