@@ -1009,17 +1009,20 @@ export default function CheckoutScreen() {
   };
 
   const getDiscountAmount = () => {
-    if (!couponStatus?.valid) return 0;
+    if (!couponStatus?.valid || !couponStatus.discount) return 0;
 
     const subtotal = cart.reduce(
-      (sum, item) => sum + item.price * item.quantity,
+      (sum, item) => sum + calculateDiscountedPrice(item) * (item.quantity || 1),
       0,
     );
 
-    if (couponStatus.discount.type === 'percentage' || 'percent') {
-      return (subtotal * couponStatus.discount.value) / 100;
-    } else if (couponStatus.discount.type === 'fixed') {
-      return couponStatus.discount.value;
+    const { type, value } = couponStatus.discount || {};
+
+    if (type === 'percent' || type === 'percentage') {
+      return (subtotal * (Number(value) || 0)) / 100;
+    }
+    if (type === 'amount' || type === 'fixed') {
+      return Number(value) || 0;
     }
 
     return 0;

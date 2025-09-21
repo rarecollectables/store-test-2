@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
 import { useStore } from '../context/store';
+import { storeOrder } from './components/orders-modal';
 import { supabase } from '../lib/supabase/client';
 import { useCurrency } from '../context/currency';
 import { trackEvent } from '../lib/trackEvent';
@@ -39,6 +40,7 @@ export default function CheckoutSuccess() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { formatPrice } = useCurrency();
+  const { setCart } = useStore();
   
   useEffect(() => {
     const checkPaymentStatus = async () => {
@@ -108,7 +110,8 @@ export default function CheckoutSuccess() {
                 items: orderData?.items || [],
                 paymentMethod: 'Paystack',
                 paymentReference: paymentData.reference,
-                email: paymentData.customer?.email || params.email
+                email: paymentData.customer?.email || params.email,
+                currency: 'NGN'
               };
               
               // Save order to user's order history
@@ -143,8 +146,41 @@ export default function CheckoutSuccess() {
                 items: newOrder.items
               });
               
+              // Persist order to database (Supabase)
+              try {
+                console.log('Persisting Paystack order to database:', newOrder);
+                const dbResult = await storeOrder(newOrder, newOrder.email);
+                console.log('storeOrder result (Paystack):', dbResult);
+              } catch (persistErr) {
+                console.error('Failed to persist Paystack order to DB:', persistErr);
+                // Continue even if DB persistence fails
+              }
+              
               // Clear cart
-              clearCart();
+              setCart([]);
+              
+              // Send order confirmation email (Paystack flow)
+              try {
+                const emailTo = newOrder.email;
+                if (emailTo) {
+                  const res = await fetch('/.netlify/functions/send-order-confirmation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: emailTo, order: newOrder }),
+                  });
+                  console.log('Paystack email response status:', res.status, res.statusText);
+                  try {
+                    const resJson = await res.json();
+                    console.log('Paystack email response body:', resJson);
+                  } catch (e) {
+                    // Response may not be JSON; ignore
+                  }
+                } else {
+                  console.warn('No email found for Paystack order; skipping confirmation email.');
+                }
+              } catch (emailErr) {
+                console.error('Error sending order confirmation email (Paystack):', emailErr);
+              }
               
               return; // Exit early as we've handled the Paystack payment
             } else {
@@ -397,10 +433,9 @@ export default function CheckoutSuccess() {
                   // Send order confirmation email
                   try {
                     console.log('Sending order confirmation email to:', email);
-                    // Use the correct endpoint and payload structure
-                    // The Netlify function expects 'to' instead of 'email'
+                    // The Netlify function expects 'email' for the recipient address
                     const emailPayload = {
-                      to: email, // Changed from 'email' to 'to' to match backend expectation
+                      email: email,
                       order: orderData
                     };
                     console.log('Email payload:', JSON.stringify(emailPayload, null, 2));

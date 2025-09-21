@@ -104,6 +104,19 @@ const PaystackPayment = ({
           // Store the reference for verification after redirect
           localStorage.setItem('paystackReference', data.data.reference);
           
+          // Store a minimal currentOrder so checkout-success can render items and totals
+          try {
+            const minimalOrder = {
+              items: Array.isArray(cart) ? cart : [],
+              total: Number.isFinite(Number(amount)) ? Number(amount) : 0,
+              currency: 'NGN',
+              created_at: new Date().toISOString(),
+            };
+            localStorage.setItem('currentOrder', JSON.stringify(minimalOrder));
+          } catch (e) {
+            console.warn('Failed to store minimal currentOrder:', e);
+          }
+          
           // Redirect to the Paystack checkout page
           window.location.href = data.data.authorizationUrl;
         } else {
