@@ -47,6 +47,12 @@ exports.handler = async function(event, context) {
 
     // Get the Paystack secret key from environment variables
     const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+    // Determine site URL for Paystack redirect after payment
+    const SITE_URL =
+      process.env.SITE_URL ||
+      process.env.URL ||
+      process.env.DEPLOY_PRIME_URL ||
+      'https://rarecollectables.co.uk';
     
     if (!PAYSTACK_SECRET_KEY) {
       console.error('Paystack secret key is not configured');
@@ -78,6 +84,8 @@ exports.handler = async function(event, context) {
         amount: amount, // amount in kobo
         reference: reference || undefined, // Use undefined to let Paystack generate a reference
         currency: 'NGN',
+        // Ensure Paystack redirects back to our success page to complete verification & email
+        callback_url: `${SITE_URL.replace(/\/$/, '')}/checkout-success`,
         metadata: metadata || {}
       }
     });
