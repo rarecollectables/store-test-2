@@ -648,8 +648,7 @@ export default function CheckoutScreen() {
           // billing_address: billing,
           coupon: coupon,
           discountAmount: newDiscountAmount,
-          // automatic_payment_methods: {enabled: true},
-          payment_method_types: paymentMethodTypes, // 👈 send dynamic method
+          automatic_payment_methods: { enabled: true },
         };
 
         const intentResponse = await fetch(
