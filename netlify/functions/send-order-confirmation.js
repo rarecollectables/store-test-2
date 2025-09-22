@@ -3,15 +3,24 @@ const nodemailer = require('nodemailer');
 
 // Configure email transporter
 const createTransporter = () => {
-  // Use environment variables for email configuration
+  // Prefer explicit EMAIL_* variables. Fall back to GMAIL_* if provided.
+  const host =
+    process.env.EMAIL_HOST ||
+    (process.env.GMAIL_USER ? 'smtp.gmail.com' : 'smtp.example.com');
+  const port = parseInt(
+    process.env.EMAIL_PORT || (host === 'smtp.gmail.com' ? '465' : '587')
+  );
+  const secure =
+    process.env.EMAIL_SECURE === 'true' || (host === 'smtp.gmail.com' && port === 465);
+  const user = process.env.EMAIL_USER || process.env.GMAIL_USER;
+  const pass =
+    process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS || process.env.GMAIL_PASS;
+
   return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.example.com',
-    port: parseInt(process.env.EMAIL_PORT || '587'),
-    secure: process.env.EMAIL_SECURE === 'true',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD,
-    },
+    host,
+    port,
+    secure,
+    auth: user && pass ? { user, pass } : undefined,
   });
 };
 
@@ -148,7 +157,10 @@ exports.handler = async (event, context) => {
     
     // Send email
     const info = await transporter.sendMail({
-      from: process.env.EMAIL_FROM || 'orders@rarecollectables.com',
+      from:
+        process.env.EMAIL_FROM ||
+        process.env.GMAIL_USER ||
+        'orders@rarecollectables.com',
       to: email,
       subject: `Order Confirmation - ${order.id || 'New Order'}`,
       html: htmlContent,

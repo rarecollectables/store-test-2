@@ -35,7 +35,8 @@ function getDeviceKey() {
 
 export default function CheckoutSuccess() {
   const router = useRouter();
-  const { payment_intent, redirect_status, session_id } = useLocalSearchParams();
+  // Use a single params object for all query params (email, payment_intent, reference, etc.)
+  const params = useLocalSearchParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -110,7 +111,7 @@ export default function CheckoutSuccess() {
                 items: orderData?.items || [],
                 paymentMethod: 'Paystack',
                 paymentReference: paymentData.reference,
-                email: paymentData.customer?.email || params.email,
+                email: paymentData.customer?.email || params?.email || null,
                 currency: 'NGN'
               };
               
