@@ -10,7 +10,10 @@
     "pre-deploy": "node scripts/pre-deploy.js",
     "validate-deployment": "node scripts/validate-deployment.js",
     "build": "expo export --platform web",
-    "deploy": "yarn run validate-deployment && node scripts/deploy.js"
+    "generate-sitemap": "node generate-sitemap.js",
+    "prerender": "node scripts/prerender.js",
+    "build:netlify": "npm run generate-sitemap && npm run build && npm run prerender",
+    "deploy": "npm run validate-deployment && node scripts/deploy.js"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.2",
@@ -64,6 +67,7 @@
     "react-native-url-polyfill": "^2.0.0",
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "0.19.13",
+    "puppeteer": "^24.15.0",
     "stripe": "^18.1.0",
     "styled-components": "6.1.17",
     "ws": "^8.18.2",

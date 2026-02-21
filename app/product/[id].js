@@ -19,6 +19,7 @@ import ZoomableImage from '../components/ZoomableImage';
 import RelatedProductsSection from '../components/RelatedProductsSection';
 import ProductReviews from '../components/ProductReviews';
 import ProductStructuredData from '../../components/ProductStructuredData';
+import SEO from '../../components/SEO';
 import Breadcrumbs from '../../components/Breadcrumbs';
 import CollapsibleSection from '../components/CollapsibleSection';
 import ProductCustomization from '../components/ProductCustomization';
@@ -521,6 +522,21 @@ export default function ProductDetail() {
 
   return (
     <>
+      {product && (
+        <SEO
+          title={product?.title || product?.name || 'Product'}
+          description={
+            (product?.short_description || product?.description || '')
+              ?.toString()
+              ?.substring(0, 160) ||
+            'Shop luxury jewellery and accessories at Rare Collectables.'
+          }
+          image={product?.image_url || product?.image}
+          url={`https://rarecollectables.co.uk/product/${product?.id || id}`}
+          type="product"
+        />
+      )}
+
       {/* Add structured data for product */}
       {product && (
         <ProductStructuredData product={product} />

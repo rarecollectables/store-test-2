@@ -1,6 +1,7 @@
 [build]
   base = "/"
   publish = "dist"
+  command = "npm run build:netlify"
   
   [build.environment]
     NODE_VERSION = "18"
@@ -10,6 +11,8 @@
     CANCEL_URL = "https://rarecollectables.co.uk/cart"
     SUPABASE_URL = "@supabase_url"
     SUPABASE_SERVICE_ROLE_KEY = "@supabase_service_role_key"
+    EXPO_PUBLIC_SUPABASE_URL = "@supabase_url"
+    EXPO_PUBLIC_SUPABASE_ANON_KEY = "@supabase_anon_key"
 
 [functions]
 included_files = ["netlify/functions/order-update-email.hbs"]

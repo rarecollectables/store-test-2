@@ -12,22 +12,30 @@ export default function ProductStructuredData({ product }) {
     if (Platform.OS !== 'web' || !product) return;
     
     // Format price correctly
-    const price = parseFloat(product.price).toFixed(2);
+    const numericPrice = typeof product.price === 'number'
+      ? product.price
+      : parseFloat(String(product.price || '').replace(/[^0-9.]/g, ''));
+    const price = Number.isFinite(numericPrice) ? numericPrice.toFixed(2) : '0.00';
     
     // Calculate availability
     const availability = product.stock > 0 
       ? 'https://schema.org/InStock' 
       : 'https://schema.org/OutOfStock';
 
+    const title = product.title || product.name || 'Product';
+    const description = product.short_description || product.description || '';
+    const images = [
+      product.image_url || product.image,
+      ...(Array.isArray(product.additional_images) ? product.additional_images : [])
+    ].filter(Boolean);
+
     // Build the structured data object
     const structuredData = {
       '@context': 'https://schema.org/',
       '@type': 'Product',
-      name: product.name,
-      image: Array.isArray(product.images) && product.images.length > 0 
-        ? product.images.map(img => typeof img === 'string' ? img : img.uri).filter(Boolean)
-        : product.image,
-      description: product.description,
+      name: title,
+      image: images.length > 0 ? images : undefined,
+      description: description,
       sku: product.id,
       brand: {
         '@type': 'Brand',
@@ -73,35 +81,14 @@ export default function ProductStructuredData({ product }) {
 
     // Add meta tags for SEO
     try {
-      // Add structured data script
-      const script = document.createElement('script');
-      script.type = 'application/ld+json';
-      script.text = JSON.stringify(structuredData);
-      document.head.appendChild(script);
-      
-      // Add meta description if not present
-      if (!document.querySelector('meta[name="description"]')) {
-        const metaDescription = document.createElement('meta');
-        metaDescription.name = 'description';
-        metaDescription.content = product.description?.substring(0, 160) || 
-          `Buy ${product.name} from Rare Collectables - Unique collectible items`;
-        document.head.appendChild(metaDescription);
+      let script = document.getElementById('product-structured-data');
+      if (!script) {
+        script = document.createElement('script');
+        script.id = 'product-structured-data';
+        script.type = 'application/ld+json';
+        document.head.appendChild(script);
       }
-      
-      // Add canonical URL
-      const canonicalLink = document.createElement('link');
-      canonicalLink.rel = 'canonical';
-      canonicalLink.href = `https://rarecollectables.co.uk/product/${product.id}`;
-      document.head.appendChild(canonicalLink);
-      
-      // Clean up function to remove added elements when component unmounts
-      return () => {
-        document.head.removeChild(script);
-        if (document.querySelector('meta[name="description"]')) {
-          document.head.removeChild(document.querySelector('meta[name="description"]'));
-        }
-        document.head.removeChild(canonicalLink);
-      };
+      script.text = JSON.stringify(structuredData);
     } catch (error) {
       console.error('Error adding structured data:', error);
     }
