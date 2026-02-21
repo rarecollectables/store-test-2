@@ -22,9 +22,6 @@ included_files = ["netlify/functions/order-update-email.hbs"]
   [functions.node_version]
     version = "18"
 
-  [functions.build]
-    command = "yarn install && yarn run build"
-
 [[plugins]]
   package = "@netlify/plugin-functions-install-core"
 
