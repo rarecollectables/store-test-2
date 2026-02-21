@@ -4,12 +4,33 @@ const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
 // Get environment variables
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+
+const isProbablyValidUrl = (value) => {
+  if (typeof value !== 'string') return false;
+  const v = value.trim();
+  if (!v) return false;
+  if (v.startsWith('@')) return false;
+  try {
+    const u = new URL(v);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Error: Supabase configuration is missing.');
   console.error('Please ensure EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set in your environment.');
+  console.error('Alternatively, you can set SUPABASE_URL and SUPABASE_ANON_KEY for server-side scripts.');
+  process.exit(1);
+}
+
+if (!isProbablyValidUrl(supabaseUrl)) {
+  console.error('Error: Supabase URL is invalid.');
+  console.error(`Value received: ${String(supabaseUrl)}`);
+  console.error('On Netlify, make sure EXPO_PUBLIC_SUPABASE_URL is set to a real https://... URL in Site settings → Environment variables.');
   process.exit(1);
 }
 
