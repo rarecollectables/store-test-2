@@ -8,6 +8,11 @@ import { storeOrder } from './components/orders-modal';
 import { supabase } from '../lib/supabase/client';
 import { useCurrency } from '../context/currency';
 import { trackEvent } from '../lib/trackEvent';
+import { loadStripe } from '@stripe/stripe-js';
+
+const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+// Initialize Stripe promise at module scope so that the bundler binds the loadStripe function correctly
+const stripePromise = STRIPE_PUBLISHABLE_KEY ? loadStripe(STRIPE_PUBLISHABLE_KEY) : null;
 
 // Define getUserOrders function directly to avoid import issues
 function getUserOrders(email) {
@@ -198,7 +203,7 @@ export default function CheckoutSuccess() {
         if ((paymentIntentId && redirectStatus === 'succeeded') || sessionId) {
           console.log('Payment verification needed, loading Stripe...');
           // Load Stripe to verify the payment
-          const stripe = await loadStripe(process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+          const stripe = stripePromise ? await stripePromise : await loadStripe(process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY);
           console.log('Stripe loaded successfully');
           
           // Handle different payment flows
