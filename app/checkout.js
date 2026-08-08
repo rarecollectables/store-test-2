@@ -1048,7 +1048,7 @@ export default function CheckoutScreen() {
     return addThousandSeparators(checkoutConfig.amount.toFixed(2));
   };
 
-  const GooglePayCheckout = ({clientSecret, totalAmount, contact}) => {
+  const GooglePayCheckout = ({clientSecret, totalAmount, contact, address}) => {
     const stripe = useStripe();
     const [paymentRequest, setPaymentRequest] = useState(null);
     const [canUsePaymentRequest, setCanUsePaymentRequest] = useState(false);
@@ -1125,28 +1125,18 @@ export default function CheckoutScreen() {
         
 
         pr.on('paymentmethod', async event => {
-          const {error, paymentIntent} = await stripe.confirmPayment({
-            elements,
-            confirmParams: {
-              return_url: `${window.location.origin}/checkout-success`,
-              receipt_email: contact.email,
-              payment_method_data: {
-                billing_details: {
-                  name: `${contact.firstName} ${contact.lastName}`,
-                  email: contact.email,
-                  phone: contact.phone,
-                  address: {
-                    city: address.city,
-                    country: 'GB',
-                    line1: address.line1,
-                    line2: address.line2,
-                    postal_code: address.postalCode,
-                    state: address.county,
-                  },
-                },
+          const {error, paymentIntent} = await stripe.confirmCardPayment(clientSecret, {
+            payment_method: event.paymentMethod.id,
+            shipping: {
+              name: contact?.name || event.shippingAddress?.recipientName || 'Customer',
+              address: {
+                line1: address?.line1 || event.shippingAddress?.addressLine?.[0] || '',
+                city: address?.city || event.shippingAddress?.city || '',
+                postal_code: address?.postcode || event.shippingAddress?.postalCode || '',
+                country: 'GB',
               },
             },
-            redirect: 'if_required',
+            receipt_email: contact?.email || event.payerEmail,
           });
 
           if (error) {
@@ -1156,7 +1146,7 @@ export default function CheckoutScreen() {
             event.complete('success');
             router.push({
               pathname: '/checkout-success',
-              params: {email: contact.email},
+              params: {email: contact?.email || event.payerEmail},
             });
           }
         });
