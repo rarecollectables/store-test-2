@@ -1069,26 +1069,6 @@ export default function CheckoutScreen() {
           requestPayerName: true,
           requestPayerEmail: true,
           requestShipping: true,
-          supportedPaymentMethods: [
-            {
-              supportedMethods: 'google_pay',
-              data: {
-                environment: 'PRODUCTION',
-                merchantInfo: {
-                  merchantName: 'Your Business',
-                },
-                paymentMethodTokenizationParameters: {
-                  tokenizationType: 'PAYMENT_GATEWAY',
-                  parameters: {
-                    gateway: 'stripe',
-                    'stripe:publishableKey': STRIPE_PUBLISHABLE_KEY,
-                    'stripe:version': '2020-08-27',
-                  },
-                },
-              },
-            },
-            // Add other methods if needed
-          ],
         });
 
         pr.on('shippingaddresschange', event => {
